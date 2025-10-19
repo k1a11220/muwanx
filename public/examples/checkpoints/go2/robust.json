@@ -37,7 +37,7 @@
                 "name": "PreviousActions",
                 "history_steps": 3,
                 "transpose": true,
-                "_comment": "36 dims (12×3): previous actions with 3-step history (transposed for Go2 compatibility)"
+                "_comment": "36 dims (12×3): previous actions with 3-step history"
             }
         ],
         "command_": [

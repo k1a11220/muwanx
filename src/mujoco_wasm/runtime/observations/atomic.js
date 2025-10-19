@@ -62,7 +62,7 @@ export class BaseAngularVelocity {
         const { 
             history_steps = 1, 
             scale = 1.0,
-            world_frame = false  // if true, return world frame (for legacy HIMLocoObs compatibility)
+            world_frame = false  // if true, return world frame
         } = kwargs;
         this.steps = history_steps;
         this.scale = scale;
@@ -76,14 +76,14 @@ export class BaseAngularVelocity {
         
         let angVel;
         if (this.world_frame) {
-            // Keep in world frame (legacy HIMLocoObs behavior)
+            // Keep in world frame
             angVel = {
                 x: angVelWorld[0] * this.scale,
                 y: angVelWorld[1] * this.scale,
                 z: angVelWorld[2] * this.scale
             };
         } else {
-            // Transform to base frame (recommended for new policies)
+            // Transform to base frame
             const baseQuat = this.simulation.qpos.subarray(3, 7);
             const quat_inv = new THREE.Quaternion(baseQuat[1], baseQuat[2], baseQuat[3], baseQuat[0]).invert();
             const angVelVec = new THREE.Vector3(angVelWorld[0], angVelWorld[1], angVelWorld[2]);
@@ -172,7 +172,6 @@ export class JointPositions {
         this.num_joints = joint_names.length;
         this.subtract_default = subtract_default;
         this.scale = scale;
-        this.defaultJpos = runtime.defaultJpos;
         this.history = new Array(this.steps).fill(null).map(() => new Float32Array(this.num_joints));
 
         this.joint_qpos_adr = [];
@@ -183,24 +182,27 @@ export class JointPositions {
     }
 
     compute() {
-        const current = new Float32Array(this.num_joints);
-        for (let i = 0; i < this.num_joints; i++) {
-            let pos = this.simulation.qpos[this.joint_qpos_adr[i]];
-            if (this.subtract_default) {
-                pos -= this.defaultJpos[i];
-            }
-            current[i] = pos * this.scale;
-        }
+        const defaultJpos = this.runtime.defaultJpos || new Float32Array(this.num_joints);
         
+        // Update history by shifting references
         for (let i = this.history.length - 1; i > 0; i--) {
             this.history[i] = this.history[i - 1];
         }
-        this.history[0] = current;
+        
+        // Reuse the shifted array (was at history[steps-1], now at history[0])
+        for (let i = 0; i < this.num_joints; i++) {
+            let pos = this.simulation.qpos[this.joint_qpos_adr[i]];
+            if (this.subtract_default) {
+                pos -= defaultJpos[i];
+            }
+            this.history[0][i] = pos * this.scale;
+        }
         
         const flattened = new Float32Array(this.steps * this.num_joints);
         for (let i = 0; i < this.steps; i++) {
             flattened.set(this.history[i], i * this.num_joints);
         }
+        
         return flattened;
     }
 }
@@ -229,25 +231,29 @@ export class JointVelocities {
         this.joint_qvel_adr = [];
         for (let i = 0; i < joint_names.length; i++) {
             const idx = runtime.jointNamesMJC.indexOf(joint_names[i]);
+            if (idx < 0) {
+                throw new Error(`JointVelocities: joint "${joint_names[i]}" not found in jointNamesMJC`);
+            }
             this.joint_qvel_adr.push(model.jnt_dofadr[idx]);
         }
     }
 
     compute() {
-        const current = new Float32Array(this.num_joints);
-        for (let i = 0; i < this.num_joints; i++) {
-            current[i] = this.simulation.qvel[this.joint_qvel_adr[i]] * this.scale;
-        }
-        
+        // Update history by shifting references
         for (let i = this.history.length - 1; i > 0; i--) {
             this.history[i] = this.history[i - 1];
         }
-        this.history[0] = current;
+        
+        // Reuse the shifted array
+        for (let i = 0; i < this.num_joints; i++) {
+            this.history[0][i] = this.simulation.qvel[this.joint_qvel_adr[i]] * this.scale;
+        }
         
         const flattened = new Float32Array(this.steps * this.num_joints);
         for (let i = 0; i < this.steps; i++) {
             flattened.set(this.history[i], i * this.num_joints);
         }
+        
         return flattened;
     }
 }
@@ -276,8 +282,7 @@ export class PreviousActions {
         const flattened = new Float32Array(this.steps * this.numActions);
         
         if (this.transpose) {
-            // Transposed flattening
-            // [action0_t0, action0_t1, ..., action1_t0, action1_t1, ...]
+            // Transposed flattening: [action0_t0, action0_t1, action0_t2, action1_t0, action1_t1, action1_t2, ...]
             for (let i = 0; i < this.steps; i++) {
                 const source = this.actionBuffer[i] || new Float32Array(this.numActions);
                 for (let j = 0; j < this.numActions; j++) {
@@ -285,8 +290,7 @@ export class PreviousActions {
                 }
             }
         } else {
-            // Normal flattening
-            // [all_actions_t0, all_actions_t1, all_actions_t2, ...]
+            // Normal flattening: [all_actions_t0, all_actions_t1, all_actions_t2, ...]
             for (let i = 0; i < this.steps; i++) {
                 const source = this.actionBuffer[i] || new Float32Array(this.numActions);
                 flattened.set(source, i * this.numActions);
@@ -300,10 +304,6 @@ export class PreviousActions {
 /**
  * Simple velocity command (vel_x, vel_y, ang_vel_yaw)
  * Dims: 3 * history_steps
- * 
- * Note: Usually commands don't need history (history_steps=1), but some legacy
- * policies like HIMLocoObs include commands in the observation history buffer.
- * Set history_steps > 1 to replicate the command across multiple timesteps.
  */
 export class SimpleVelocityCommand {
     constructor(model, simulation, runtime, kwargs = {}) {
@@ -334,4 +334,5 @@ export class SimpleVelocityCommand {
         return flattened;
     }
 }
+
 

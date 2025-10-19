@@ -53,7 +53,7 @@ export class VelocityCommand {
 }
 
 /**
- * Velocity command with oscillator features (for legacy compatibility)
+ * Velocity command with oscillator features
  * Dims: 16 (3 velocity + 12 oscillator + 1 padding)
  * 
  * This version includes oscillator features that some policies expect.

@@ -18,32 +18,30 @@
             {
                 "name": "ProjectedGravity",
                 "joint_name": "floating_base_joint",
-                "history_steps": 3,
-                "_comment": "9 dims (3×3): gravity in base frame with 3-step history"
+                "history_steps": 3
             },
             {
                 "name": "JointPositions",
                 "joint_names": "isaac",
                 "history_steps": 3,
-                "_comment": "36 dims (12×3): joint positions with 3-step history"
+                "subtract_default": false,
+                "scale": 1.0
             },
             {
                 "name": "JointVelocities",
                 "joint_names": "isaac",
                 "history_steps": 3,
-                "_comment": "36 dims (12×3): joint velocities with 3-step history"
+                "scale": 1.0
             },
             {
                 "name": "PreviousActions",
                 "history_steps": 3,
-                "transpose": true,
-                "_comment": "36 dims (12×3): previous actions with 3-step history (transposed for Go2 compatibility)"
+                "transpose": true
             }
         ],
         "command": [
             {
-                "name": "ImpedanceCommand",
-                "_comment": "27 dims: impedance control parameters + oscillators"
+                "name": "ImpedanceCommand"
             }
         ]
     },

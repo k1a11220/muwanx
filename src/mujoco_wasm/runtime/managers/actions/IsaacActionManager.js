@@ -42,7 +42,11 @@ export class IsaacActionManager extends BaseManager {
             while (endIdx < namesArray.length && namesArray[endIdx] !== 0) {
                 endIdx++;
             }
-            const name = textDecoder.decode(namesArray.subarray(startIdx, endIdx));
+            let name = textDecoder.decode(namesArray.subarray(startIdx, endIdx));
+            // Handle unnamed joints: if first joint (j=0) is unnamed, assume it's the floating base
+            if (name === '' && j === 0) {
+                name = 'floating_base_joint';
+            }
             this.jointNamesMJC.push(name);
         }
 
