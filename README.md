@@ -23,7 +23,7 @@ Perfect for sharing interactive demos as static sites (such as GitHub Pages), ra
 ### 🚀 [Visit the Live Demo](https://ttktjmt.github.io/muwanx/)
 
 **╰▶ [Live Demo with MyoSuite](https://ttktjmt.github.io/muwanx/#/myosuite)** &nbsp;&nbsp;© [MyoSuite](https://github.com/MyoHub/myosuite)  
-**╰▶ [Live Demo with MuJoCo Menagerie](https://ttktjmt.github.io/muwanx/#/mujoco_menagerie)** ([Checking licensing and citation compliance](https://github.com/google-deepmind/mujoco_menagerie/discussions/210)) &nbsp;&nbsp;© [Google DeepMind](https://github.com/google-deepmind/mujoco_menagerie)
+**╰▶ [Live Demo with MuJoCo Menagerie](https://ttktjmt.github.io/muwanx/#/mujoco_menagerie)** &nbsp;&nbsp;© [Google DeepMind](https://github.com/google-deepmind/mujoco_menagerie)
 
 
 ## Features
@@ -55,6 +55,14 @@ Open your browser and navigate to the localhost URL shown in the terminal to see
 
 <img src="public/muwanx_demo.gif" alt="muwanx demo" width="70%">
 
+
+## Third-Party Assets
+
+Muwanx incorporates robot models from the external sources. See the respective submodule for full details, including individual model licenses and copyrights.  
+All models are used under their respective licenses, which can be found in the submodule's LICENSE file. Please review and comply with those terms for any use or redistribution.
+
+- [MyoSuite License](https://github.com/MyoHub/myosuite/blob/main/LICENSE)
+- [MuJoCo Menagerie License](https://github.com/google-deepmind/mujoco_menagerie/blob/main/LICENSE)
 
 ## Acknowledgments
 

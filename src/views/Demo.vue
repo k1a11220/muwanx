@@ -185,10 +185,10 @@
                 <v-progress-linear indeterminate color="primary" class="mb-4"></v-progress-linear>
                 <div class="loading-text">
                     <span v-if="isMobile">
-                        Loading MuJoCo and ONNX,<br/>Please wait...
+                        Setting up simulation,<br/>Please wait...
                     </span>
                     <span v-else>
-                        Loading MuJoCo and ONNX, Please wait...
+                        Setting up simulation, Please wait...
                     </span>
                 </div>
             </v-card-text>
@@ -668,7 +668,7 @@ export default {
 
             try {
                 const { scenePath, metaPath } = this.resolveSceneConfig(selectedTask, defaultPolicy);
-                await this.withTransition('Switching model...', async () => {
+                await this.withTransition('Switching scene...', async () => {
                     await this.ensureActionManager(metaPath, defaultPolicy);
                     await this.runtime.loadEnvironment({
                         scenePath,
