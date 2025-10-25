@@ -2,15 +2,15 @@
   "tasks": [
     {
       "id": "1",
-      "name": "Finger",
-      "model_xml": "./examples/scenes/myosuite/myosuite/simhive/myo_sim/finger/finger_v0.xml",
+      "name": "Hand",
+      "model_xml": "./examples/scenes/myosuite/myosuite/simhive/myo_sim/hand/myohand.xml",
       "asset_meta": null,
       "default_policy": null,
       "policies": []
     },
     {
       "id": "2",
-      "name": "MyoArm",
+      "name": "Arm",
       "model_xml": "./examples/scenes/myosuite/myosuite/simhive/myo_sim/arm/myoarm.xml",
       "asset_meta": null,
       "default_policy": null,
@@ -18,24 +18,16 @@
     },
     {
       "id": "3",
-      "name": "MyoLegs",
-      "model_xml": "./examples/scenes/myosuite/myosuite/simhive/myo_sim/leg/myolegs.xml",
+      "name": "Elbow",
+      "model_xml": "./examples/scenes/myosuite/myosuite/simhive/myo_sim/elbow/myoelbow_2dof6muscles.xml",
       "asset_meta": null,
       "default_policy": null,
       "policies": []
     },
     {
       "id": "4",
-      "name": "MyoHand",
-      "model_xml": "./examples/scenes/myosuite/myosuite/simhive/myo_sim/hand/myohand.xml",
-      "asset_meta": null,
-      "default_policy": null,
-      "policies": []
-    },
-    {
-      "id": "5",
-      "name": "Bimanual",
-      "model_xml": "public/examples/scenes/myosuite/myosuite/envs/myo/assets/arm/myoarm_bionic_bimanual.xml",
+      "name": "Legs",
+      "model_xml": "./examples/scenes/myosuite/myosuite/simhive/myo_sim/leg/myolegs.xml",
       "asset_meta": null,
       "default_policy": null,
       "policies": []

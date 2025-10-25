@@ -180,40 +180,60 @@ export class MujocoRuntime {
     }
 
     async loadScene(mjcfPath, metaPath) {
-        this.scene.remove(this.scene.getObjectByName('MuJoCo Root'));
-        [this.mjModel, this.mjData, this.bodies, this.lights] =
-            await loadSceneFromURL(this.mujoco, mjcfPath, this);
-
-        let assetMeta = null;
-        if (metaPath && metaPath !== 'null') {
-            const response = await fetch(metaPath);
-            assetMeta = await response.json();
+        if (this.loadingScene) {
+            await this.loadingScene;
         }
+        this.loadingScene = (async () => {
+            this.scene.remove(this.scene.getObjectByName('MuJoCo Root'));
 
-        this.timestep = this.mjModel.opt.timestep;
-        this.decimation = Math.round(0.02 / this.timestep);
-        this.mujoco_time = 0.0;
-        this.simStepCount = 0;
-        this.inferenceStepCount = 0;
-        this.assetMetadata = assetMeta;
+            [this.mjModel, this.mjData, this.bodies, this.lights] =
+                await loadSceneFromURL(this.mujoco, mjcfPath, this);
 
-        if (this.actionManager && typeof this.actionManager.onSceneLoaded === 'function') {
-            await this.actionManager.onSceneLoaded({
-                mjModel: this.mjModel,
-                mjData: this.mjData,
-                assetMeta,
-            });
-        }
-        for (const manager of this.envManagers) {
-            if (typeof manager.onSceneLoaded === 'function') {
-                await manager.onSceneLoaded({
+            if (!this.mjModel || this.mjModel.deleted) {
+                console.warn("MjModel is invalid after loadSceneFromURL");
+                return;
+            }
+
+            let assetMeta = null;
+            if (metaPath && metaPath !== 'null') {
+                const response = await fetch(metaPath);
+                assetMeta = await response.json();
+            }
+
+            // safe guard
+            if (!this.mjModel || !this.mjModel.opt) {
+                throw new Error("mjModel is invalid or deleted before accessing opt");
+            }
+
+            this.timestep = this.mjModel.opt.timestep;
+            this.decimation = Math.round(0.02 / this.timestep);
+            this.mujoco_time = 0.0;
+            this.simStepCount = 0;
+            this.inferenceStepCount = 0;
+            this.assetMetadata = assetMeta;
+
+            if (this.actionManager?.onSceneLoaded) {
+                await this.actionManager.onSceneLoaded({
                     mjModel: this.mjModel,
                     mjData: this.mjData,
                     assetMeta,
                 });
             }
-        }
-        this.observationContext = { assetMeta };
+            for (const manager of this.envManagers) {
+                if (manager?.onSceneLoaded) {
+                    await manager.onSceneLoaded({
+                        mjModel: this.mjModel,
+                        mjData: this.mjData,
+                        assetMeta,
+                    });
+                }
+            }
+
+            this.observationContext = { assetMeta };
+            this.loadingScene = null;
+        })();
+
+        await this.loadingScene;
     }
 
     async loadPolicy(policyPath) {

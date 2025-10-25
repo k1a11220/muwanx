@@ -70,16 +70,121 @@ function resolveAssetPath(xmlDirectory, assetPath) {
     return joined || normalized || null;
 }
 
+// Create texture supporting both RGBA and RGB formats with caching
+function createBaseTexture(mjModel, texId) {
+    if (!mjModel || texId < 0) {
+        return null;
+    }
+
+    const width = mjModel.tex_width ? mjModel.tex_width[texId] : 0;
+    const height = mjModel.tex_height ? mjModel.tex_height[texId] : 0;
+    if (!width || !height) {
+        return null;
+    }
+
+    const texAdr = mjModel.tex_adr ? mjModel.tex_adr[texId] : 0;
+    const pixelCount = width * height;
+
+    let textureData = new Uint8Array(pixelCount * 4);
+    let hasValidData = false;
+
+    // Try RGBA format first
+    if (mjModel.tex_rgba && mjModel.tex_rgba.length >= (texAdr + pixelCount) * 4) {
+        const rgbaSource = mjModel.tex_rgba.subarray(texAdr * 4, (texAdr + pixelCount) * 4);
+        textureData.set(rgbaSource);
+        hasValidData = true;
+    } 
+    // Try RGB format
+    else if (mjModel.tex_rgb && mjModel.tex_rgb.length >= (texAdr + pixelCount) * 3) {
+        const rgbSource = mjModel.tex_rgb.subarray(texAdr * 3, (texAdr + pixelCount) * 3);
+        for (let src = 0, dst = 0; src < rgbSource.length; src += 3, dst += 4) {
+            textureData[dst + 0] = rgbSource[src + 0];
+            textureData[dst + 1] = rgbSource[src + 1];
+            textureData[dst + 2] = rgbSource[src + 2];
+            textureData[dst + 3] = 255;
+        }
+        hasValidData = true;
+    }
+    // Fallback for legacy offset-based format
+    else if (mjModel.tex_rgb) {
+        const offset = texAdr;
+        const rgbArray = mjModel.tex_rgb;
+        if (rgbArray.length >= offset + (pixelCount * 3)) {
+            for (let p = 0; p < pixelCount; p++) {
+                textureData[(p * 4) + 0] = rgbArray[offset + ((p * 3) + 0)];
+                textureData[(p * 4) + 1] = rgbArray[offset + ((p * 3) + 1)];
+                textureData[(p * 4) + 2] = rgbArray[offset + ((p * 3) + 2)];
+                textureData[(p * 4) + 3] = 255;
+            }
+            hasValidData = true;
+        }
+    }
+
+    if (!hasValidData) {
+        return null;
+    }
+
+    const texture = new THREE.DataTexture(textureData, width, height, THREE.RGBAFormat, THREE.UnsignedByteType);
+    texture.needsUpdate = true;
+    texture.flipY = false;
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(1, 1);
+    texture.anisotropy = 4;
+    return texture;
+}
+
+function getBaseTexture(textureCache, mjModel, texId) {
+    if (texId < 0) {
+        return null;
+    }
+    if (textureCache.has(texId)) {
+        return textureCache.get(texId);
+    }
+    const baseTexture = createBaseTexture(mjModel, texId);
+    if (baseTexture) {
+        textureCache.set(texId, baseTexture);
+    }
+    return baseTexture;
+}
+
 export async function loadSceneFromURL(mujoco, filename, parent) {
+  // Clean up existing resources
   if (parent.mjData != null) {
-    parent.mjData.delete();
-    parent.mjModel = null;
+    try { parent.mjData.delete(); } catch (e) { /* ignore */ }
     parent.mjData = null;
   }
+  if (parent.mjModel != null) {
+    try { parent.mjModel.delete(); } catch (e) { /* ignore */ }
+    parent.mjModel = null;
+  }
 
-  parent.mjModel = mujoco.MjModel.loadFromXML(`/working/${filename}`);
-  
-  parent.mjData = new mujoco.MjData(parent.mjModel);
+  // Load new model and data with guards
+  const modelPath = `/working/${filename}`;
+  let newModel = null;
+  try {
+    newModel = mujoco.MjModel.loadFromXML(modelPath);
+  } catch (err) {
+    throw new Error(`Failed to load MjModel from ${modelPath}: ${err?.message || err}`);
+  }
+  if (!newModel) {
+    throw new Error(`MjModel.loadFromXML returned null for ${modelPath}`);
+  }
+
+  let newData = null;
+  try {
+    newData = new mujoco.MjData(newModel);
+  } catch (err) {
+    try { newModel.delete(); } catch (e) { /* ignore */ }
+    throw new Error(`Failed to create MjData: ${err?.message || err}`);
+  }
+  if (!newData) {
+    try { newModel.delete(); } catch (e) { /* ignore */ }
+    throw new Error(`MjData constructor returned null for model loaded from ${modelPath}`);
+  }
+
+  parent.mjModel = newModel;
+  parent.mjData = newData;
 
   let mjModel = parent.mjModel;
   let mjData = parent.mjData;
@@ -96,7 +201,8 @@ export async function loadSceneFromURL(mujoco, filename, parent) {
   let bodies = {};
   let meshes = {};
   let lights = [];
-
+  
+  const textureCache = new Map();
   let material = new THREE.MeshPhysicalMaterial();
   material.color = new THREE.Color(1, 1, 1);
 
@@ -132,9 +238,9 @@ export async function loadSceneFromURL(mujoco, filename, parent) {
 
     let geometry = new THREE.SphereGeometry(size[0] * 0.5);
     if (type === mujoco.mjtGeom.mjGEOM_PLANE.value) {
-      // plane handled later
+      // Handled later
     } else if (type === mujoco.mjtGeom.mjGEOM_HFIELD.value) {
-      // hfield not implemented
+      // Not implemented
     } else if (type === mujoco.mjtGeom.mjGEOM_SPHERE.value) {
       geometry = new THREE.SphereGeometry(size[0]);
     } else if (type === mujoco.mjtGeom.mjGEOM_CAPSULE.value) {
@@ -187,6 +293,7 @@ export async function loadSceneFromURL(mujoco, filename, parent) {
       bodies[b].has_custom_mesh = true;
     }
 
+    // Process geometry color and texture
     let texture;
     let color = [
       mjModel.geom_rgba[(g * 4) + 0],
@@ -194,6 +301,7 @@ export async function loadSceneFromURL(mujoco, filename, parent) {
       mjModel.geom_rgba[(g * 4) + 2],
       mjModel.geom_rgba[(g * 4) + 3]
     ];
+    
     if (mjModel.geom_matid[g] !== -1) {
       let matId = mjModel.geom_matid[g];
       color = [
@@ -206,32 +314,26 @@ export async function loadSceneFromURL(mujoco, filename, parent) {
       texture = undefined;
       let texId = mjModel.mat_texid[matId];
       if (texId !== -1) {
-        let width = mjModel.tex_width[texId];
-        let height = mjModel.tex_height[texId];
-        let offset = mjModel.tex_adr[texId];
-        let rgbArray = mjModel.tex_rgb;
-        let rgbaArray = new Uint8Array(width * height * 4);
-        for (let p = 0; p < width * height; p++) {
-          rgbaArray[(p * 4) + 0] = rgbArray[offset + ((p * 3) + 0)];
-          rgbaArray[(p * 4) + 1] = rgbArray[offset + ((p * 3) + 1)];
-          rgbaArray[(p * 4) + 2] = rgbArray[offset + ((p * 3) + 2)];
-          rgbaArray[(p * 4) + 3] = 1.0;
+        texture = getBaseTexture(textureCache, mjModel, texId);
+        if (texture) {
+          texture = texture.clone();
+          texture.needsUpdate = true;
+          
+          // Legacy texture repeat settings
+          if (texId === 2) {
+            texture.repeat = new THREE.Vector2(50, 50);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+          } else {
+            texture.repeat = new THREE.Vector2(1, 1);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+          }
         }
-        texture = new THREE.DataTexture(rgbaArray, width, height, THREE.RGBAFormat, THREE.UnsignedByteType);
-        if (texId === 2) {
-          texture.repeat = new THREE.Vector2(50, 50);
-          texture.wrapS = THREE.RepeatWrapping;
-          texture.wrapT = THREE.RepeatWrapping;
-        } else {
-          texture.repeat = new THREE.Vector2(1, 1);
-          texture.wrapS = THREE.RepeatWrapping;
-          texture.wrapT = THREE.RepeatWrapping;
-        }
-
-        texture.needsUpdate = true;
       }
     }
 
+    // Create or reuse material based on color and texture changes
     if (material.color.r !== color[0] ||
       material.color.g !== color[1] ||
       material.color.b !== color[2] ||
@@ -260,11 +362,20 @@ export async function loadSceneFromURL(mujoco, filename, parent) {
 
     let mesh;
     if (type === mujoco.mjtGeom.mjGEOM_PLANE.value) {
+      // Determine plane size with backward compatibility
+      let planeWidth = 100;
+      let planeHeight = 100;
+      
+      // if (size[0] && size[0] < 50) {
+      //   planeWidth = size[0] * 2;
+      //   planeHeight = (size[1] || size[0]) * 2;
+      // }
+      
       const reflectorOptions = { clipBias: 0.003 };
       if (texture) {
         reflectorOptions.texture = texture;
       }
-      mesh = new Reflector(new THREE.PlaneGeometry(100, 100), reflectorOptions);
+      mesh = new Reflector(new THREE.PlaneGeometry(planeWidth, planeHeight), reflectorOptions);
       mesh.rotateX(-Math.PI / 2);
     } else {
       mesh = new THREE.Mesh(geometry, material);
@@ -294,7 +405,7 @@ export async function loadSceneFromURL(mujoco, filename, parent) {
   mujocoRoot.spheres.castShadow = true;
   mujocoRoot.add(mujocoRoot.spheres);
 
-  // Check if mjModel has light properties before accessing them
+  // Light setup
   if (mjModel.nlight > 0 && mjModel.light_directional && mjModel.light_attenuation) {
     for (let l = 0; l < mjModel.nlight; l++) {
       let light = new THREE.SpotLight();
@@ -322,10 +433,11 @@ export async function loadSceneFromURL(mujoco, filename, parent) {
     }
   }
   
-  // Add default light if no lights in mjModel
+  // Add default light if no lights present
   if (mjModel.nlight === 0 || !mjModel.light_directional) {
     let light = new THREE.DirectionalLight();
     mujocoRoot.add(light);
+    lights.push(light);
   }
 
   for (let b = 0; b < mjModel.nbody; b++) {
@@ -334,7 +446,10 @@ export async function loadSceneFromURL(mujoco, filename, parent) {
     } else if (bodies[b]) {
       bodies[0].add(bodies[b]);
     } else {
-      bodies[b] = new THREE.Group(); bodies[b].name = names[b + 1]; bodies[b].bodyID = b; bodies[b].has_custom_mesh = false;
+      bodies[b] = new THREE.Group(); 
+      bodies[b].name = names[b + 1]; 
+      bodies[b].bodyID = b; 
+      bodies[b].has_custom_mesh = false;
       bodies[0].add(bodies[b]);
     }
   }
@@ -343,6 +458,10 @@ export async function loadSceneFromURL(mujoco, filename, parent) {
   parent.lights = lights;
   parent.meshes = meshes;
   parent.mujocoRoot = mujocoRoot;
+
+  if (!mjModel || mjModel.deleted) {
+    throw new Error('loadSceneFromURL: mjModel is invalid or already deleted');
+  }
 
   return [mjModel, mjData, bodies, lights];
 }
@@ -387,20 +506,17 @@ export async function downloadExampleScenesFolder(mujoco, scenePath) {
     const normalizedPath = scenePath.replace(/^[./]+/, '');
     const pathParts = normalizedPath.split('/');
     
-    // Get the directory containing the XML file
     const xmlDirectory = pathParts.slice(0, -1).join('/');
     if (!xmlDirectory) {
         return;
     }
 
-    // Use the XML file directory as the cache key
     const cacheKey = xmlDirectory;
     if (sceneDownloadPromises.has(cacheKey)) {
         return sceneDownloadPromises.get(cacheKey);
     }
 
     const downloadPromise = (async () => {
-        // Use the dynamic asset collector instead of index.json
         let manifest;
         try {
             manifest = await mujocoAssetCollector.analyzeScene(scenePath, SCENE_BASE_URL);
@@ -414,7 +530,6 @@ export async function downloadExampleScenesFolder(mujoco, scenePath) {
             }
             
         } catch (error) {
-            
             // Fallback to index.json if asset collector fails
             try {
                 const manifestResponse = await fetch(`${SCENE_BASE_URL}/${xmlDirectory}/index.json`);
@@ -430,7 +545,7 @@ export async function downloadExampleScenesFolder(mujoco, scenePath) {
             }
         }
 
-        // Filter out external URLs and process only local assets
+        // Filter external URLs and process local assets
         const localAssets = manifest
             .filter(asset => 
                 typeof asset === 'string' && 
@@ -470,7 +585,7 @@ export async function downloadExampleScenesFolder(mujoco, scenePath) {
             
             if (!response.ok) {
                 console.warn(`[downloadExampleScenesFolder] Failed to fetch scene asset ${originalPath}: ${response.status}`);
-                continue; // Skip missing assets but don't fail the whole download
+                continue;
             }
 
             const assetPath = normalizedPath;
