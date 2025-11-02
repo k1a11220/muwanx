@@ -1,31 +1,20 @@
 <template>
-  <v-overlay :model-value="isTransitioning.value" :z-index="5000" class="switch-overlay" scrim="rgba(0,0,0,0.35)">
-    <div class="overlay-content">
-      <v-progress-circular indeterminate color="primary" size="64" />
-      <div class="transition-text">{{ transitionMessage.value || 'Loading...' }}</div>
-    </div>
-  </v-overlay>
+  <StatusOverlay :model-value="isTransitioning" :message="transitionMessage" />
 
   <div id="mujoco-container" class="mujoco-container" />
 
-  <div class="control-panel" :class="{ 'panel-collapsed': isPanelCollapsed }">
-    <v-btn v-if="isMobile" class="panel-toggle" @click="togglePanel" icon size="small" color="primary" elevation="2">
-      <v-icon>{{ isPanelCollapsed ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
-    </v-btn>
-
-    <ControlPanel :project-name="projectName" :project-link="projectLink" :route-items="routeItems"
-      :current-route-name="$route.name" :is-mobile="isMobile" :task-items="taskItems" :task-id="task"
-      :policy-items="policyItems" :policy-id="policy" :selected-task="selectedTask" :selected-policy="selectedPolicy"
-      :use-setpoint="use_setpoint" :command-vel-x="command_vel_x" :compliant-mode="compliant_mode" :facet-kp="facet_kp"
-      :trajectory-state="trajectoryPlaybackState" :trajectory-loop="trajectoryLoop" @navigateRoute="goToRoute"
-      @selectTask="onSelectTask" @selectPolicy="onSelectPolicy"
-      @update:useSetpoint="onUpdateUseSetpoint"
-      @update:commandVelX="onUpdateCommandVelX"
-      @update:facetKp="onUpdateFacetKp"
-      @update:compliantMode="onUpdateCompliantMode"
-      @playTrajectory="playTrajectory" @stopTrajectory="stopTrajectory" @resetTrajectory="resetTrajectory"
-      @update:trajectoryLoop="updateTrajectoryLoop" @impulse="triggerImpulse" @reset="reset" />
-  </div>
+  <ControlPanel :project-name="projectName" :project-link="projectLink" :route-items="routeItems"
+    :current-route-name="$route.name" :is-mobile="isMobile" :task-items="taskItems" :task-id="task"
+    :policy-items="policyItems" :policy-id="policy" :selected-task="selectedTask" :selected-policy="selectedPolicy"
+    :collapsed="isPanelCollapsed"
+    :use-setpoint="use_setpoint" :command-vel-x="command_vel_x" :compliant-mode="compliant_mode" :facet-kp="facet_kp"
+    :trajectory-state="trajectoryPlaybackState" :trajectory-loop="trajectoryLoop" @navigateRoute="goToRoute"
+    @toggle="togglePanel"
+    @selectTask="onSelectTask" @selectPolicy="onSelectPolicy" @update:useSetpoint="onUpdateUseSetpoint"
+    @update:commandVelX="onUpdateCommandVelX" @update:facetKp="onUpdateFacetKp"
+    @update:compliantMode="onUpdateCompliantMode" @playTrajectory="playTrajectory" @stopTrajectory="stopTrajectory"
+    @resetTrajectory="resetTrajectory" @update:trajectoryLoop="updateTrajectoryLoop" @impulse="triggerImpulse"
+    @reset="reset" />
 
   <StatusDialogs :state="state" :extra-error-message="extra_error_message"
     :url-param-error-message="urlParamErrorMessage" :is-mobile="isMobile" :is-small-screen="isSmallScreen"
@@ -33,13 +22,7 @@
 
   <Notice />
 
-  <div class="help-button-container" v-if="!isMobile || isPanelCollapsed">
-    <v-btn @click="showHelpDialog = true" icon size="small" variant="text" class="help-btn" title="Help Button (?)">
-      <v-icon color="white">mdi-help</v-icon>
-    </v-btn>
-  </div>
-
-  <HelpDialog v-model="showHelpDialog" :is-mobile="isMobile" @toggleHelp="() => (showHelpDialog = !showHelpDialog)"
+  <HelpDialog v-model="showHelpDialog" :is-mobile="isMobile" :show-button="!isMobile || isPanelCollapsed" @toggleHelp="() => (showHelpDialog = !showHelpDialog)"
     @toggleUI="toggleUIVisibility" @reset="reset" @navigateScene="navigateScene" @navigatePolicy="navigatePolicy" />
 </template>
 
@@ -57,10 +40,14 @@ import { useUrlSync } from '@/views/demo/composables/useUrlSync'
 import { useTransition } from '@/views/demo/composables/useTransition'
 import { useResponsive } from '@/views/demo/composables/useResponsive'
 import { createShortcuts } from '@/utils/shortcuts.js'
+import StatusOverlay from '@/views/demo/components/StatusOverlay.vue'
 
 const props = defineProps({ configPath: { type: String, default: './config.json' } })
 
-const { isTransitioning, transitionMessage, withTransition } = useTransition()
+const transitionApi = useTransition()
+const isTransitioning = transitionApi.isTransitioning
+const transitionMessage = transitionApi.transitionMessage
+const withTransition = transitionApi.withTransition
 const { isMobile, isSmallScreen, isPanelCollapsed, togglePanel } = useResponsive()
 const rt = useRuntime()
 const {
@@ -183,82 +170,5 @@ onBeforeUnmount(() => {
   width: 100%;
   height: 100vh;
   z-index: 1;
-}
-
-.control-panel {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  width: 260px;
-  z-index: 1000;
-}
-
-@media (max-width: 768px) {
-  .control-panel {
-    top: auto;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    width: 100%;
-    padding: 6px 10px 10px;
-  }
-
-  .panel-toggle {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    bottom: calc(100% + 8px);
-    background: primary !important;
-    border: 1px solid var(--ui-border) !important;
-    box-shadow: var(--ui-shadow) !important;
-  }
-
-  .panel-collapsed .control-card {
-    display: none;
-  }
-}
-
-.overlay-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-}
-
-.transition-text {
-  color: white;
-  font-size: 0.95rem;
-  letter-spacing: 0.01em;
-}
-
-.help-button-container {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  z-index: 1001;
-  transition: bottom 0.2s ease;
-}
-
-.help-btn {
-  background: transparent !important;
-  transition: opacity 0.2s ease;
-  opacity: 0.7;
-}
-
-.help-btn:hover {
-  opacity: 1;
-}
-</style>
-
-<style>
-body.interactive-mode .control-panel {
-  display: none !important;
-}
-
-body.interactive-mode .transition-overlay,
-body.interactive-mode .notice-container,
-body.interactive-mode .help-button-container {
-  display: block !important;
 }
 </style>

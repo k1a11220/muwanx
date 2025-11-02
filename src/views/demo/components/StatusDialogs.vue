@@ -1,17 +1,5 @@
 <template>
-  <v-dialog :model-value="state === 0" persistent :max-width="isMobile ? '90vw' : '600px'"
-    :fullscreen="isMobile && isSmallScreen" scrollable>
-    <v-card class="status-dialog-card" :title="!isMobile ? 'Loading Simulation Environment' : undefined">
-      <v-card-text class="dialog-content">
-        <div v-if="isMobile" class="mobile-dialog-title">Loading...</div>
-        <v-progress-linear indeterminate color="primary" class="mb-4"></v-progress-linear>
-        <div class="loading-text">
-          <span v-if="isMobile">Setting up simulation,<br />Please wait...</span>
-          <span v-else>Setting up simulation, Please wait...</span>
-        </div>
-      </v-card-text>
-    </v-card>
-  </v-dialog>
+  <StatusOverlay :model-value="state === 0" message="Loading simulation..." />
 
   <v-dialog :model-value="state < 0 || !!urlParamErrorMessage" :persistent="state < 0"
     :max-width="isMobile ? '90vw' : '600px'" :fullscreen="isMobile && isSmallScreen" scrollable>
@@ -37,6 +25,7 @@
 </template>
 
 <script setup>
+import StatusOverlay from '@/views/demo/components/StatusOverlay.vue'
 defineProps({
   state: { type: Number, required: true },
   extraErrorMessage: { type: String, default: '' },

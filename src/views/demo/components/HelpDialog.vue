@@ -1,4 +1,10 @@
 <template>
+  <div v-if="showButton" class="help-button-container">
+    <v-btn icon size="small" variant="text" class="help-btn" title="Help Button (?)" @click="model = true">
+      <v-icon color="white">mdi-help</v-icon>
+    </v-btn>
+  </div>
+
   <v-dialog v-model="model" :max-width="isMobile ? '90vw' : '500px'" scrollable>
     <v-card>
       <v-card-title class="d-flex justify-space-between align-center">
@@ -43,7 +49,11 @@
 
 <script setup>
 import { computed } from 'vue'
-const props = defineProps({ modelValue: { type: Boolean, default: false }, isMobile: { type: Boolean, default: false } })
+const props = defineProps({
+  modelValue: { type: Boolean, default: false },
+  isMobile: { type: Boolean, default: false },
+  showButton: { type: Boolean, default: false },
+})
 const emit = defineEmits(['update:modelValue', 'toggleHelp', 'toggleUI', 'reset', 'navigateScene', 'navigatePolicy'])
 const model = computed({ get: () => props.modelValue, set: (v) => emit('update:modelValue', v) })
 </script>
@@ -97,5 +107,29 @@ const model = computed({ get: () => props.modelValue, set: (v) => emit('update:m
   flex: 1;
   font-size: 14px;
   color: var(--ui-muted);
+}
+</style>
+
+<style>
+.help-button-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 1001;
+  transition: bottom 0.2s ease;
+}
+
+.help-btn {
+  background: transparent !important;
+  transition: opacity 0.2s ease;
+  opacity: 0.7;
+}
+
+.help-btn:hover {
+  opacity: 1;
+}
+
+body.interactive-mode .help-button-container {
+  display: block !important;
 }
 </style>

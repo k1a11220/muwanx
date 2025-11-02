@@ -46,3 +46,9 @@
   text-decoration: underline;
 }
 </style>
+
+<style>
+body.interactive-mode .notice-container {
+  display: block !important;
+}
+</style>

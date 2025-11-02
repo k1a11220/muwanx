@@ -1,37 +1,45 @@
 <template>
-  <v-card class="control-card" :elevation="isMobile ? 0 : 2">
-    <ProjectSelector :project-name="projectName" :project-link="projectLink" :route-items="routeItems"
-      :current-route-name="currentRouteName" @navigate="(r) => $emit('navigateRoute', r)" />
+  <div class="control-panel">
+    <v-btn v-if="isMobile" class="panel-toggle" @click="$emit('toggle')" icon size="small" color="primary"
+      elevation="2">
+      <v-icon>{{ collapsed ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
+    </v-btn>
 
-    <v-card-text :class="{ 'mobile-padding': isMobile }">
-      <SceneSelector :items="taskItems" :selected-id="taskId" @select="(id) => $emit('selectTask', id)" />
-    </v-card-text>
+    <v-card v-show="!(isMobile && collapsed)" class="control-card" :elevation="isMobile ? 0 : 2">
+      <ProjectSelector :project-name="projectName" :project-link="projectLink" :route-items="routeItems"
+        :current-route-name="currentRouteName" @navigate="(r) => $emit('navigateRoute', r)" />
 
-    <v-card-text v-if="policyItems && policyItems.length" :class="{ 'mobile-padding': isMobile }">
-      <PolicySelector :items="policyItems" :selected-id="policyId" @select="(id) => $emit('selectPolicy', id)" />
-    </v-card-text>
+      <v-card-text :class="{ 'mobile-padding': isMobile }">
+        <SceneSelector :items="taskItems" :selected-id="taskId" @select="(id) => $emit('selectTask', id)" />
+      </v-card-text>
 
-    <template v-if="policyId">
-      <CommandControls :selected-policy="selectedPolicy" :use-setpoint="useSetpoint" :command-vel-x="commandVelX"
-        :compliant-mode="compliantMode" :is-mobile="isMobile"
-        @update:useSetpoint="(v) => $emit('update:useSetpoint', v)"
-        @update:commandVelX="(v) => $emit('update:commandVelX', v)" />
+      <v-card-text v-if="policyItems && policyItems.length" :class="{ 'mobile-padding': isMobile }">
+        <PolicySelector :items="policyItems" :selected-id="policyId" @select="(id) => $emit('selectPolicy', id)" />
+      </v-card-text>
 
-      <TrajectoryControls :selected-policy="selectedPolicy" :state="trajectoryState" :loop="trajectoryLoop"
-        :is-mobile="isMobile" @play="$emit('playTrajectory')" @stop="$emit('stopTrajectory')"
-        @reset="$emit('resetTrajectory')" @update:loop="(v) => $emit('update:trajectoryLoop', v)" />
+      <template v-if="policyId">
+        <CommandControls :selected-policy="selectedPolicy" :use-setpoint="useSetpoint" :command-vel-x="commandVelX"
+          :compliant-mode="compliantMode" :is-mobile="isMobile"
+          @update:useSetpoint="(v) => $emit('update:useSetpoint', v)"
+          @update:commandVelX="(v) => $emit('update:commandVelX', v)" />
 
-      <v-divider v-if="selectedPolicy?.ui_controls && selectedPolicy.ui_controls.includes('stiffness')" />
-      <StiffnessControls :selected-policy="selectedPolicy" :facet-kp="facetKp" :compliant-mode="compliantMode"
-        :is-mobile="isMobile" @update:facetKp="(v) => $emit('update:facetKp', v)"
-        @update:compliantMode="(v) => $emit('update:compliantMode', v)" />
-    </template>
+        <TrajectoryControls :selected-policy="selectedPolicy" :state="trajectoryState" :loop="trajectoryLoop"
+          :is-mobile="isMobile" @play="$emit('playTrajectory')" @stop="$emit('stopTrajectory')"
+          @reset="$emit('resetTrajectory')" @update:loop="(v) => $emit('update:trajectoryLoop', v)" />
 
-    <v-divider></v-divider>
-    <ForceControls :show="selectedTask?.name === 'Go2'" :is-mobile="isMobile" @impulse="$emit('impulse')" />
+        <v-divider v-if="selectedPolicy?.ui_controls && selectedPolicy.ui_controls.includes('stiffness')" />
+        <StiffnessControls :selected-policy="selectedPolicy" :facet-kp="facetKp" :compliant-mode="compliantMode"
+          :is-mobile="isMobile" @update:facetKp="(v) => $emit('update:facetKp', v)"
+          @update:compliantMode="(v) => $emit('update:compliantMode', v)" />
+      </template>
 
-    <v-btn @click="$emit('reset')" block text :size="isMobile ? 'default' : 'small'" class="reset-button">Reset</v-btn>
-  </v-card>
+      <v-divider></v-divider>
+      <ForceControls :show="selectedTask?.name === 'Go2'" :is-mobile="isMobile" @impulse="$emit('impulse')" />
+
+      <v-btn @click="$emit('reset')" block text :size="isMobile ? 'default' : 'small'"
+        class="reset-button">Reset</v-btn>
+    </v-card>
+  </div>
 </template>
 
 <script setup>
@@ -49,6 +57,7 @@ defineProps({
   routeItems: { type: Array, default: () => [] },
   currentRouteName: [String, Number, Symbol],
   isMobile: { type: Boolean, default: false },
+  collapsed: { type: Boolean, default: false },
   taskItems: { type: Array, default: () => [] },
   taskId: { type: [String, Number], default: null },
   policyItems: { type: Array, default: () => [] },
@@ -64,6 +73,7 @@ defineProps({
 })
 
 defineEmits([
+  'toggle',
   'navigateRoute',
   'selectTask',
   'selectPolicy',
@@ -81,6 +91,14 @@ defineEmits([
 </script>
 
 <style scoped>
+.control-panel {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 260px;
+  z-index: 1000;
+}
+
 .control-card {
   background: var(--ui-surface);
   backdrop-filter: saturate(120%) blur(6px);
@@ -148,7 +166,35 @@ defineEmits([
   margin-inline-end: 0 !important;
   gap: 0 !important;
 }
+
 .control-card :deep(.slider-value) {
   font-size: 0.7rem !important;
+}
+
+@media (max-width: 768px) {
+  .control-panel {
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    padding: 6px 10px 10px;
+  }
+
+  .panel-toggle {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: calc(100% + 8px);
+    background: primary !important;
+    border: 1px solid var(--ui-border) !important;
+    box-shadow: var(--ui-shadow) !important;
+  }
+}
+</style>
+
+<style>
+body.interactive-mode .control-panel {
+  display: none !important;
 }
 </style>
