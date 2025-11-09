@@ -6,14 +6,11 @@
   <ControlPanel :project-name="projectName" :project-link="projectLink" :route-items="routeItems"
     :current-route-name="$route.name" :is-mobile="isMobile" :task-items="taskItems" :task-id="task"
     :policy-items="policyItems" :policy-id="policy" :selected-task="selectedTask" :selected-policy="selectedPolicy"
-    :collapsed="isPanelCollapsed"
-    :use-setpoint="use_setpoint" :command-vel-x="command_vel_x" :compliant-mode="compliant_mode" :facet-kp="facet_kp"
-    @navigateRoute="goToRoute"
-    @toggle="togglePanel"
+    :collapsed="isPanelCollapsed" :use-setpoint="use_setpoint" :command-vel-x="command_vel_x"
+    :compliant-mode="compliant_mode" :facet-kp="facet_kp" @navigateRoute="goToRoute" @toggle="togglePanel"
     @selectTask="onSelectTask" @selectPolicy="onSelectPolicy" @update:useSetpoint="onUpdateUseSetpoint"
     @update:commandVelX="onUpdateCommandVelX" @update:facetKp="onUpdateFacetKp"
-    @update:compliantMode="onUpdateCompliantMode" @impulse="triggerImpulse"
-    @reset="reset" />
+    @update:compliantMode="onUpdateCompliantMode" @impulse="triggerImpulse" @reset="reset" />
 
   <StatusDialogs :state="state" :extra-error-message="extra_error_message"
     :url-param-error-message="urlParamErrorMessage" :is-mobile="isMobile" :is-small-screen="isSmallScreen"
@@ -21,8 +18,9 @@
 
   <Notice />
 
-  <HelpDialog v-model="showHelpDialog" :is-mobile="isMobile" :show-button="!isMobile || isPanelCollapsed" @toggleHelp="() => (showHelpDialog = !showHelpDialog)"
-    @toggleUI="toggleUIVisibility" @reset="reset" @navigateScene="navigateScene" @navigatePolicy="navigatePolicy" />
+  <HelpDialog v-model="showHelpDialog" :is-mobile="isMobile" :show-button="!isMobile || isPanelCollapsed"
+    @toggleHelp="() => (showHelpDialog = !showHelpDialog)" @toggleUI="toggleUIVisibility"
+    @toggleVRButton="toggleVRButton" @reset="reset" @navigateScene="navigateScene" @navigatePolicy="navigatePolicy" />
 </template>
 
 <script setup>
@@ -64,6 +62,7 @@ const {
   updateCommandVelX,
   updateCompliantMode,
   triggerImpulse,
+  toggleVRButton,
   reset,
   dispose,
 } = rt
@@ -142,6 +141,7 @@ onMounted(async () => {
   shortcuts = createShortcuts({
     onReset: () => reset(),
     onToggleUI: () => toggleUIVisibility(),
+    onToggleVRButton: () => toggleVRButton(),
     onNavigateScene: (d) => navigateScene(d),
     onNavigatePolicy: (d) => navigatePolicy(d),
     getHelpVisible: () => showHelpDialog.value,

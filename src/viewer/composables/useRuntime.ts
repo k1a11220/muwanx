@@ -206,6 +206,12 @@ export function useRuntime() {
     commandManager.value.triggerImpulse();
   }
 
+  function toggleVRButton() {
+    if (runtime.value) {
+      runtime.value.toggleVRButton();
+    }
+  }
+
   function dispose() {
     try {
       runtime.value?.dispose();
@@ -242,6 +248,7 @@ export function useRuntime() {
     updateCommandVelX,
     updateCompliantMode,
     triggerImpulse,
+    toggleVRButton,
     dispose,
   };
 }

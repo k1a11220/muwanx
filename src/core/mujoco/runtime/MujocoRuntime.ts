@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { downloadExampleScenesFolder, getPosition, getQuaternion, loadSceneFromURL } from './utils/mujocoScene';
 import { ONNXModule } from './utils/onnxHelper';
@@ -56,6 +57,7 @@ export class MujocoRuntime {
   lights: THREE.Light[];
   mujocoRoot: any;
   loopPromise: Promise<void> | null;
+  vrButton: HTMLElement | null;
 
   constructor(mujoco, options: MujocoRuntimeOptions = {}) {
     this.mujoco = mujoco;
@@ -108,11 +110,17 @@ export class MujocoRuntime {
     this.scene.background = new THREE.Color(0.15, 0.25, 0.35);
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    this.renderer.xr.enabled = true;
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.container.appendChild(this.renderer.domElement);
+    this.vrButton = VRButton.createButton(this.renderer);
+    // Hide VRButton by default
+    this.vrButton.style.visibility = 'hidden';
+    this.vrButton.style.pointerEvents = 'none';
+    this.container.appendChild(this.vrButton);
 
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.target.set(0, 0.2, 0);
@@ -657,6 +665,14 @@ export class MujocoRuntime {
 
   resume() {
     this.params.paused = false;
+  }
+
+  toggleVRButton() {
+    if (this.vrButton) {
+      const isHidden = this.vrButton.style.visibility === 'hidden';
+      this.vrButton.style.visibility = isHidden ? 'visible' : 'hidden';
+      this.vrButton.style.pointerEvents = isHidden ? 'auto' : 'none';
+    }
   }
 
   async reset() {

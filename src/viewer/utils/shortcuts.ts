@@ -3,6 +3,7 @@
 // const shortcuts = createShortcuts({
 //   onReset: () => this.reset(),
 //   onToggleUI: () => this.toggleUIVisibility(),
+//   onToggleVRButton: () => this.toggleVRButton(),
 //   onNavigateScene: (d) => this.navigateScene(d),
 //   onNavigatePolicy: (d) => this.navigatePolicy(d),
 //   getHelpVisible: () => this.showHelpDialog,
@@ -15,6 +16,7 @@ export function createShortcuts(options = {}) {
     target = typeof document !== 'undefined' ? document : null,
     onReset,
     onToggleUI,
+    onToggleVRButton,
     onNavigateScene,
     onNavigatePolicy,
     getHelpVisible,
@@ -22,7 +24,7 @@ export function createShortcuts(options = {}) {
   } = options;
 
   if (!target || typeof target.addEventListener !== 'function') {
-    return { detach() {} };
+    return { detach() { } };
   }
 
   const handleKeydown = (event) => {
@@ -45,6 +47,10 @@ export function createShortcuts(options = {}) {
       const key = event.key;
       if (key === 'i') {
         onToggleUI && onToggleUI();
+        return;
+      }
+      if (key === 'v') {
+        onToggleVRButton && onToggleVRButton();
         return;
       }
       if (key === '?') {
@@ -81,7 +87,7 @@ export function createShortcuts(options = {}) {
     detach() {
       try {
         target.removeEventListener('keydown', handleKeydown);
-      } catch (_) {}
+      } catch (_) { }
     },
     toggleHelp() {
       if (getHelpVisible && setHelpVisible) {

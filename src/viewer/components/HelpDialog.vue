@@ -24,6 +24,10 @@
             <div class="shortcut-description">Toggle control panel</div>
           </div>
           <div class="shortcut-item">
+            <div class="shortcut-key"><kbd @click="emit('toggleVRButton')" class="clickable-key">v</kbd></div>
+            <div class="shortcut-description">Toggle VR button (experimental)</div>
+          </div>
+          <div class="shortcut-item">
             <div class="shortcut-key"><kbd @click="emit('reset')" class="clickable-key">backspace</kbd></div>
             <div class="shortcut-description">Reset simulation</div>
           </div>
@@ -54,7 +58,7 @@ const props = defineProps({
   isMobile: { type: Boolean, default: false },
   showButton: { type: Boolean, default: false },
 })
-const emit = defineEmits(['update:modelValue', 'toggleHelp', 'toggleUI', 'reset', 'navigateScene', 'navigatePolicy'])
+const emit = defineEmits(['update:modelValue', 'toggleHelp', 'toggleUI', 'toggleVRButton', 'reset', 'navigateScene', 'navigatePolicy'])
 const model = computed({ get: () => props.modelValue, set: (v) => emit('update:modelValue', v) })
 </script>
 
