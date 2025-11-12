@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { mujocoAssetCollector } from '../src/core/mujoco/utils/mujocoAssetCollector';
+import { mujocoAssetCollector } from '../src/core/engine/utils/mujocoAssetCollector.ts';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -15,9 +15,9 @@ const projectRoot = path.resolve(__dirname, '..');
 global.fetch = async (url, options = {}) => {
   try {
     // Convert URL to file path
-    const urlPath = url.replace(/^.*\/examples\/scenes\//, '');
+    const urlPath = url.replace(/^.*\/examples\/assets\/scene\//, '');
     // Use absolute path based on project root for reliability
-    const filePath = path.join(projectRoot, 'public', 'examples', 'scenes', urlPath);
+    const filePath = path.join(projectRoot, 'examples', 'assets', 'scene', urlPath);
 
     if (options.method === 'HEAD') {
       // Check if file exists

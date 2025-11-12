@@ -33,7 +33,6 @@ export class MuJoCoAssetCollector {
       'skin': ['skindir'],
     };
 
-    // Binary file extensions
     this.BINARY_EXTENSIONS = ['.png', '.stl', '.skn', '.mjb'];
 
     this.cache = new Map();
