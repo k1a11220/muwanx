@@ -58,7 +58,8 @@ export function createLights({ mujoco, mjModel, mujocoRoot, bodies }: CreateLigh
       }
 
       const Icd_multiplier = mjModel.light_intensity[l] || 0.5; // default to 0.5 if unset
-      (light as any).intensity = luminance * Icd_multiplier;
+      // Three.js r155+ uses physical light units; scale up intensity accordingly
+      (light as any).intensity = luminance * Icd_multiplier * Math.PI;
 
       const ambientColor = new THREE.Color().fromArray(mjModel.light_ambient.slice(l * 3, l * 3 + 3));
       ambientSum.add(ambientColor);
@@ -141,7 +142,8 @@ export function createLights({ mujoco, mjModel, mujocoRoot, bodies }: CreateLigh
 
     const headLight = new THREE.DirectionalLight();
     headLight.color = headDiffuse.clone().add(headSpecular);
-    headLight.intensity = 0.8;
+    // Three.js r155+ uses physical light units; scale up intensity accordingly
+    headLight.intensity = 0.8 * Math.PI;
     headLight.castShadow = false;             // MuJoCo viewer-style headlight
 
     // must add target to the graph
@@ -168,7 +170,8 @@ export function createLights({ mujoco, mjModel, mujocoRoot, bodies }: CreateLigh
   if (lights.length === 0) {
     console.warn('No active lights found in MuJoCo model; adding default light.');
     const defaultLight = new THREE.DirectionalLight();
-    defaultLight.intensity = 0.8;
+    // Three.js r155+ uses physical light units; scale up intensity accordingly
+    defaultLight.intensity = 0.8 * Math.PI;
     mujocoRoot.add(defaultLight);
     lights.push(defaultLight);
   }

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { downloadExampleScenesFolder, getPosition, getQuaternion, loadSceneFromURL } from '@/core/scene/scene';
+import { updateTendonGeometry, updateTendonRendering, createTendonState } from '@/core/scene/tendons';
 import { ONNXModule } from '@/core/agent/onnxHelper';
 import type { MjModel, MjData } from 'mujoco-js';
 import { updateHeadlightFromCamera, updateLightsFromData } from '@/core/scene/lights';
@@ -115,6 +116,7 @@ export class MujocoRuntime {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
     this.container.appendChild(this.renderer.domElement);
     this.vrButton = VRButton.createButton(this.renderer);
     // Hide VRButton by default
@@ -136,10 +138,7 @@ export class MujocoRuntime {
 
     this.lastSimState = {
       bodies: new Map(),
-      tendons: {
-        numWraps: 0,
-        matrix: new THREE.Matrix4()
-      }
+      tendons: createTendonState()
     };
 
     this.mjModel = null;
@@ -590,36 +589,15 @@ export class MujocoRuntime {
     }
 
     if (this.mujocoRoot && this.mujocoRoot.cylinders) {
-      let numWraps = 0;
-      const mat = this.lastSimState.tendons.matrix;
-
-      for (let t = 0; t < this.mjModel.ntendon; t++) {
-        let startW = this.mjData.ten_wrapadr[t];
-        let r = this.mjModel.tendon_width[t];
-        for (let w = startW; w < startW + this.mjData.ten_wrapnum[t] - 1; w++) {
-          let tendonStart = getPosition(this.mjData.wrap_xpos, w, new THREE.Vector3());
-          let tendonEnd = getPosition(this.mjData.wrap_xpos, w + 1, new THREE.Vector3());
-          let tendonAvg = new THREE.Vector3().addVectors(tendonStart, tendonEnd).multiplyScalar(0.5);
-
-          let validStart = tendonStart.length() > 0.01;
-          let validEnd = tendonEnd.length() > 0.01;
-
-          if (validStart) { this.mujocoRoot.spheres.setMatrixAt(numWraps, mat.compose(tendonStart, new THREE.Quaternion(), new THREE.Vector3(r, r, r))); }
-          if (validEnd) { this.mujocoRoot.spheres.setMatrixAt(numWraps + 1, mat.compose(tendonEnd, new THREE.Quaternion(), new THREE.Vector3(r, r, r))); }
-          if (validStart && validEnd) {
-            mat.compose(tendonAvg,
-              new THREE.Quaternion().setFromUnitVectors(
-                new THREE.Vector3(0, 1, 0),
-                tendonEnd.clone().sub(tendonStart).normalize()
-              ),
-              new THREE.Vector3(r, tendonStart.distanceTo(tendonEnd), r)
-            );
-            this.mujocoRoot.cylinders.setMatrixAt(numWraps, mat);
-            numWraps++;
-          }
-        }
-      }
-      this.lastSimState.tendons.numWraps = numWraps;
+      updateTendonGeometry(
+        this.mjModel,
+        this.mjData,
+        {
+          cylinders: this.mujocoRoot.cylinders,
+          spheres: this.mujocoRoot.spheres
+        },
+        this.lastSimState.tendons
+      );
     }
   }
 
@@ -643,11 +621,13 @@ export class MujocoRuntime {
     updateLightsFromData(this.mujoco, this.mjData, this.lights);
 
     if (this.mujocoRoot && this.mujocoRoot.cylinders) {
-      const numWraps = this.lastSimState.tendons.numWraps;
-      this.mujocoRoot.cylinders.count = numWraps;
-      this.mujocoRoot.spheres.count = numWraps > 0 ? numWraps + 1 : 0;
-      this.mujocoRoot.cylinders.instanceMatrix.needsUpdate = true;
-      this.mujocoRoot.spheres.instanceMatrix.needsUpdate = true;
+      updateTendonRendering(
+        {
+          cylinders: this.mujocoRoot.cylinders,
+          spheres: this.mujocoRoot.spheres
+        },
+        this.lastSimState.tendons
+      );
     }
 
     this.renderer.render(this.scene, this.camera);

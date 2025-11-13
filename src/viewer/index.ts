@@ -4,7 +4,6 @@
 
 // Main viewer component
 export { default as MwxViewer } from './MwxViewer.vue';
-export { default as MuwanxViewer } from './MuwanxViewer.vue'; // Legacy export
 
 // UI Components
 export { default as ControlPanel } from './components/ControlPanel.vue';

@@ -1,7 +1,8 @@
 import * as THREE from 'three';
-import { mujocoAssetCollector } from '../engine/utils/mujocoAssetCollector';
+import { mujocoAssetCollector } from '../utils/mujocoAssetCollector';
 import { createLights } from './lights';
 import { createTexture } from './textures';
+import { createTendonMeshes } from './tendons';
 import type { MjModel, MjData } from 'mujoco-js';
 
 const SCENE_BASE_URL = './';
@@ -416,22 +417,7 @@ export async function loadSceneFromURL(mujoco: any, filename: string, parent: an
   }
 
   // Tendons
-  let tendonMat = new THREE.MeshPhongMaterial();
-  tendonMat.color = new THREE.Color(0.8, 0.3, 0.3);
-  mujocoRoot.cylinders = new THREE.InstancedMesh(
-    new THREE.CylinderGeometry(1, 1, 1),
-    tendonMat, 1023);
-  mujocoRoot.cylinders.receiveShadow = true;
-  mujocoRoot.cylinders.castShadow = true;
-  mujocoRoot.cylinders.count = 0; // Hide by default
-  mujocoRoot.add(mujocoRoot.cylinders);
-  mujocoRoot.spheres = new THREE.InstancedMesh(
-    new THREE.SphereGeometry(1, 10, 10),
-    tendonMat, 1023);
-  mujocoRoot.spheres.receiveShadow = true;
-  mujocoRoot.spheres.castShadow = true;
-  mujocoRoot.spheres.count = 0; // Hide by default
-  mujocoRoot.add(mujocoRoot.spheres);
+  createTendonMeshes(mujocoRoot);
 
   // Lights
   const lights: THREE.Light[] = createLights({ mujoco, mjModel, mujocoRoot, bodies });
