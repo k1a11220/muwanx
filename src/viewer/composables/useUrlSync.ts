@@ -51,9 +51,9 @@ export function useUrlSync(options: {
   const routeItems = computed(() => {
     return [
       { name: 'default', path: '#', title: 'Muwanx Demo' },
-      { name: 'menagerie', path: '#menagerie', title: 'MuJoCo Menagerie' },
-      { name: 'playground', path: '#playground', title: 'MuJoCo Playground' },
-      { name: 'myosuite', path: '#myosuite', title: 'MyoSuite' },
+      { name: 'menagerie', path: '#/menagerie', title: 'MuJoCo Menagerie' },
+      { name: 'playground', path: '#/playground', title: 'MuJoCo Playground' },
+      { name: 'myosuite', path: '#/myosuite', title: 'MyoSuite' },
     ];
   });
 
