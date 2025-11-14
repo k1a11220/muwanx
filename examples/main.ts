@@ -42,7 +42,10 @@ function buildMyoSuiteConfig() {
         id: "1",
         name: "Hand",
         model_xml: "./assets/scene/myosuite/myosuite/simhive/myo_sim/hand/myohand.xml",
-        asset_meta: "./assets/policy/myosuite/asset_meta_myohand.json",
+        camera: {
+          pos: [0.4, 1.6, 1.4],
+          target: [-0.1, 1.4, 0.4]
+        },
         default_policy: null,
         policies: []
       },
@@ -50,7 +53,10 @@ function buildMyoSuiteConfig() {
         id: "2",
         name: "Arm",
         model_xml: "./assets/scene/myosuite/myosuite/simhive/myo_sim/arm/myoarm.xml",
-        asset_meta: "./assets/policy/myosuite/asset_meta_myoarm.json",
+        camera: {
+          pos: [-0.8, 1.7, 1.4],
+          target: [-0.3, 1.3, 0.2]
+        },
         default_policy: null,
         policies: []
       },
@@ -58,7 +64,10 @@ function buildMyoSuiteConfig() {
         id: "3",
         name: "Elbow",
         model_xml: "./assets/scene/myosuite/myosuite/simhive/myo_sim/elbow/myoelbow_2dof6muscles.xml",
-        asset_meta: "./assets/policy/myosuite/asset_meta_myoelbow.json",
+        camera: {
+          pos: [-1.5, 1.7, 1.0],
+          target: [-0.5, 1.3, 0.2]
+        },
         default_policy: null,
         policies: []
       },
@@ -66,7 +75,10 @@ function buildMyoSuiteConfig() {
         id: "4",
         name: "Legs",
         model_xml: "./assets/scene/myosuite/myosuite/simhive/myo_sim/leg/myolegs.xml",
-        asset_meta: "./assets/policy/myosuite/asset_meta_myolegs.json",
+        camera: {
+          pos: [-1.5, 1.5, 1.9],
+          target: [0, 0.9, 0]
+        },
         default_policy: null,
         policies: []
       },
@@ -74,7 +86,10 @@ function buildMyoSuiteConfig() {
         id: "5",
         name: "mc23_Relocate",
         model_xml: "./assets/scene/myosuite/myosuite/envs/myo/assets/arm/myoarm_relocate.xml",
-        asset_meta: "./assets/policy/myosuite/asset_meta_relocate.json",
+        camera: {
+          pos: [0, 1.7, 2.0],
+          target: [0, 1.3, 0.2]
+        },
         default_policy: null,
         policies: []
       },
@@ -82,7 +97,10 @@ function buildMyoSuiteConfig() {
         id: "6",
         name: "mc23_ChaseTag",
         model_xml: "./assets/scene/myosuite/myosuite/envs/myo/assets/leg/myolegs_chasetag.xml",
-        asset_meta: "./assets/policy/myosuite/asset_meta_chasetag.json",
+        camera: {
+          pos: [0, 5, 12],
+          target: [0, 0, 0]
+        },
         default_policy: null,
         policies: []
       },
@@ -90,7 +108,10 @@ function buildMyoSuiteConfig() {
         id: "7",
         name: "mc24_Bimanual",
         model_xml: "./assets/scene/myosuite/myosuite/envs/myo/assets/arm/myoarm_bionic_bimanual.xml",
-        asset_meta: "./assets/policy/myosuite/asset_meta_bimanual.json",
+        camera: {
+          pos: [0, 1.7, 2.0],
+          target: [0, 1.3, 0.2]
+        },
         default_policy: null,
         policies: []
       },
@@ -98,7 +119,10 @@ function buildMyoSuiteConfig() {
         id: "8",
         name: "mc24_RunTrack",
         model_xml: "./assets/scene/myosuite/myosuite/envs/myo/assets/leg/myoosl_runtrack.xml",
-        asset_meta: "./assets/policy/myosuite/asset_meta_runtrack.json",
+        camera: {
+          pos: [6, 5, 10],
+          target: [0, 1.5, 4]
+        },
         default_policy: null,
         policies: []
       },
@@ -106,7 +130,10 @@ function buildMyoSuiteConfig() {
         id: "9",
         name: "mc25_TableTennis",
         model_xml: "./assets/scene/myosuite/myosuite/envs/myo/assets/arm/myoarm_tabletennis.xml",
-        asset_meta: "./assets/policy/myosuite/asset_meta_tabletennis.json",
+        camera: {
+          pos: [-1.5, 2, 3],
+          target: [0, 1.1, 0]
+        },
         default_policy: null,
         policies: []
       },
@@ -114,7 +141,10 @@ function buildMyoSuiteConfig() {
         id: "10",
         name: "mc25_Soccer",
         model_xml: "./assets/scene/myosuite/myosuite/envs/myo/assets/leg_soccer/myolegs_soccer.xml",
-        asset_meta: "./assets/policy/myosuite/asset_meta_soccer.json",
+        camera: {
+          pos: [-15, 7, 0],
+          target: [5, 0, 0]
+        },
         default_policy: null,
         policies: []
       }
@@ -202,6 +232,7 @@ const App = {
           name: task.name,
           model_xml: task.model_xml,
           asset_meta: task.asset_meta,
+          camera: task.camera,
           default_policy: task.default_policy,
           policies: task.policies?.map(policy => ({
             id: policy.id,
