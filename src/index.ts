@@ -116,6 +116,8 @@ export { PassiveActionManager } from './core/action/PassiveActionManager';
 
 // Observation managers and components
 export { ConfigObservationManager } from './core/observation/ObservationManager';
+// Alias for convenience
+export { ConfigObservationManager as ObservationManager } from './core/observation/ObservationManager';
 export * from './core/observation/atomic';
 export * from './core/observation/commands';
 

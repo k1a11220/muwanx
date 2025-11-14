@@ -60,7 +60,7 @@ Open your browser and navigate to the localhost URL shown in the terminal.
 
 ## Usage as an npm Package
 
-Muwanx is available as an [npm package](https://www.npmjs.com/package/muwanx) with a customizable API.
+Muwanx is available as an [npm package](https://www.npmjs.com/package/muwanx) with a customizable API that allows you to build interactive MuJoCo applications with neural network policies.
 
 ### Installation
 
@@ -68,13 +68,57 @@ Muwanx is available as an [npm package](https://www.npmjs.com/package/muwanx) wi
 npm install muwanx
 ```
 
-### Basic Usage
+### Quick Start
 
-Muwanx provides two API patterns:
+#### Imperative API (Recommended)
 
-#### Pattern A: Declarative (Load from Configuration)
+Build your viewer programmatically with method chaining:
 
-Load viewer configuration from a JSON file:
+```typescript
+import { MwxViewer } from 'muwanx';
+
+// Create viewer instance
+const viewer = new MwxViewer('#mujoco-container');
+
+// Build your application programmatically
+const project = viewer.addProject({
+  project_name: "My Robotics Project",
+  project_link: "https://github.com/username/project"
+});
+
+const scene = project.addScene({
+  id: "go2-scene",
+  name: "Unitree Go2 Locomotion",
+  model_xml: "./assets/scene/unitree_go2/scene.xml",
+  asset_meta: "./assets/policy/go2/asset_meta.json",
+  camera: {
+    position: [2.0, 1.7, 1.7],
+    target: [0, 0.2, 0],
+    fov: 45
+  }
+});
+
+const policy = scene.addPolicy({
+  id: "vanilla-policy",
+  name: "Vanilla Locomotion",
+  path: "./assets/policy/go2/vanilla.json",
+  stiffness: 25.0,
+  damping: 0.5,
+  ui_controls: ['setpoint', 'stiffness']
+});
+
+// Initialize and start simulation
+await viewer.initialize();
+await viewer.selectScene('go2-scene');
+await viewer.selectPolicy('vanilla-policy');
+
+// Control simulation
+viewer.play();
+```
+
+#### Declarative API (Alternative)
+
+Load from configuration file:
 
 ```typescript
 import { MwxViewer } from 'muwanx';
@@ -86,79 +130,6 @@ await viewer.loadConfig('./config.json');
 viewer.play();
 viewer.pause();
 await viewer.reset();
-```
-
-**Configuration Example:**
-
-```json
-{
-  "projects": {
-    "project_name": "My Robotics Project",
-    "project_link": "https://github.com/username/project",
-    "scenes": [
-      {
-        "id": "scene1",
-        "name": "Locomotion Scene",
-        "model_xml": "./assets/scene/robot/scene.xml",
-        "asset_meta": "./assets/scene/robot/asset_meta.json",
-        "camera": {
-          "position": [2.0, 1.7, 1.7],
-          "target": [0, 0.2, 0],
-          "fov": 45
-        },
-        "policies": [
-          {
-            "id": "policy1",
-            "name": "Walking Policy",
-            "path": "./assets/policy/walking.json",
-            "stiffness": 25.0,
-            "damping": 0.5
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-#### Pattern B: Imperative (Programmatic Construction)
-
-Build the viewer programmatically with method chaining:
-
-```typescript
-import { MwxViewer } from 'muwanx';
-
-const viewer = new MwxViewer('#mujoco-container');
-
-// Build programmatically
-const project = viewer.addProject({
-  project_name: "My Robotics Project",
-  project_link: "https://github.com/username/project"
-});
-
-const scene = project.addScene({
-  id: "scene1",
-  name: "Locomotion Scene",
-  model_xml: "./assets/scene/robot/scene.xml",
-  asset_meta: "./assets/scene/robot/asset_meta.json",
-  camera: {
-    position: [2.0, 1.7, 1.7],
-    target: [0, 0.2, 0]
-  }
-});
-
-const policy = scene.addPolicy({
-  id: "policy1",
-  name: "Walking Policy",
-  path: "./assets/policy/walking.json",
-  stiffness: 25.0,
-  damping: 0.5
-});
-
-// Initialize and load
-await viewer.initialize();
-await viewer.selectScene('scene1');
-await viewer.selectPolicy('policy1');
 ```
 
 ### Event Handling
@@ -214,10 +185,9 @@ import type {
 
 ### Examples
 
-See the `examples/` directory for complete examples:
-- **Declarative Example**: `examples/declarative/` - Load from config JSON
-- **Imperative Example**: `examples/imperative/` - Programmatic construction
-- **Vue Demo**: `examples/` - Full-featured Vue.js application
+See the `examples/` directory for:
+- **Demo Application**: Full-featured Vue.js viewer with UI controls
+- **API Documentation**: Complete usage guide and examples
 
 ### API Reference
 

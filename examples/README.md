@@ -1,15 +1,11 @@
 # Muwanx Examples
 
-This directory contains example applications demonstrating different usage patterns of the Muwanx package.
+This directory contains the demo application and assets for Muwanx.
 
 ## Directory Structure
 
 ```
 examples/
-├── declarative/          # Pattern A: Declarative API (load from config)
-│   └── index.html
-├── imperative/          # Pattern B: Imperative API (programmatic)
-│   └── index.html
 ├── assets/              # Shared assets (scenes, policies, configs)
 │   ├── config.json      # Main demo configuration
 │   ├── scene/           # MuJoCo scene files
@@ -19,16 +15,85 @@ examples/
 └── router.ts            # Vue router configuration
 ```
 
-## Usage Patterns
+## Running the Demo
 
-### Pattern A: Declarative (Load from Configuration)
+The demo application showcases the full Muwanx viewer with interactive controls.
 
-The declarative pattern loads all configuration from a JSON file. This is ideal for:
-- Static configurations
-- Quick prototyping
-- Configuration-driven applications
+### Development Server
 
-**Example:** `examples/declarative/index.html`
+```bash
+npm install
+npm run dev
+```
+
+Then navigate to http://localhost:3000
+
+### Build for Production
+
+```bash
+npm run build:demo
+npm run preview
+```
+
+## Using Muwanx in Your Project
+
+The demo uses the pre-built Vue viewer component (`MwxViewer.vue`), but you can use the imperative API to build custom applications:
+
+### Installation
+
+```bash
+npm install muwanx
+```
+
+### Imperative API Usage
+
+Build your viewer programmatically:
+
+```typescript
+import { MwxViewer } from 'muwanx';
+
+// Create viewer instance
+const viewer = new MwxViewer('#container');
+
+// Build programmatically
+const project = viewer.addProject({
+  project_name: "My Robotics Project",
+  project_link: "https://github.com/username/project"
+});
+
+const scene = project.addScene({
+  id: "go2-scene",
+  name: "Unitree Go2 Locomotion",
+  model_xml: "./assets/scene/unitree_go2/scene.xml",
+  asset_meta: "./assets/policy/go2/asset_meta.json",
+  camera: {
+    position: [2.0, 1.7, 1.7],
+    target: [0, 0.2, 0],
+    fov: 45
+  }
+});
+
+const policy = scene.addPolicy({
+  id: "vanilla-policy",
+  name: "Vanilla Locomotion",
+  path: "./assets/policy/go2/vanilla.json",
+  stiffness: 25.0,
+  damping: 0.5,
+  ui_controls: ['setpoint', 'stiffness']
+});
+
+// Initialize and load
+await viewer.initialize();
+await viewer.selectScene('go2-scene');
+await viewer.selectPolicy('vanilla-policy');
+
+// Control simulation
+viewer.play();
+```
+
+### Declarative API Usage
+
+Load from configuration:
 
 ```typescript
 import { MwxViewer } from 'muwanx';
@@ -37,92 +102,200 @@ const viewer = new MwxViewer('#container');
 await viewer.loadConfig('./config.json');
 ```
 
-**Configuration structure:**
+### Using the Vue Component
+
+For a full-featured viewer with UI controls:
+
+```vue
+<template>
+  <MwxViewer :configPath="'./assets/config.json'" />
+</template>
+
+<script setup>
+import { MwxViewer } from 'muwanx/viewer';
+</script>
+```
+
+## Available Assets
+
+The `assets/` directory contains pre-configured scenes and policies:
+
+### Scenes
+- **Unitree Go2**: Quadruped robot (`scene/unitree_go2/`)
+- **Unitree Go1**: Quadruped robot (`scene/unitree_go1/`)
+- **Unitree G1**: Humanoid robot (`scene/unitree_g1/`)
+- **MyoSuite**: Biomechanics models (`scene/myosuite/`)
+- **MuJoCo Menagerie**: Various robots from Google DeepMind
+- **MuJoCo Playground**: Playground environments
+
+### Policies
+- **Vanilla Locomotion**: Basic walking policy
+- **Rough Terrain**: Policy for uneven surfaces
+- **Stairs**: Policy for climbing stairs
+- And more...
+
+## Configuration Format
+
+The demo uses JSON configuration files. Example structure:
+
 ```json
 {
-  "projects": {
-    "project_name": "My Project",
-    "scenes": [
-      {
-        "id": "scene1",
-        "name": "My Scene",
-        "model_xml": "./assets/scene.xml",
-        "asset_meta": "./assets/metadata.json",
-        "policies": [
-          {
-            "id": "policy1",
-            "name": "My Policy",
-            "path": "./assets/policy.json"
-          }
-        ]
-      }
-    ]
-  }
+  "project_name": "Muwanx Demo",
+  "project_link": "https://github.com/ttktjmt/muwanx",
+  "tasks": [
+    {
+      "id": "go2",
+      "name": "Unitree Go2",
+      "model_xml": "./assets/scene/unitree_go2/scene.xml",
+      "asset_meta": "./assets/policy/go2/asset_meta.json",
+      "default_policy": "vanilla",
+      "policies": [
+        {
+          "id": "vanilla",
+          "name": "Vanilla Locomotion",
+          "path": "./assets/policy/go2/vanilla.json",
+          "ui_controls": ["setpoint", "stiffness"]
+        }
+      ]
+    }
+  ]
 }
 ```
 
-### Pattern B: Imperative (Programmatic Construction)
+**Note:** The config format uses `tasks` (legacy) which maps to `scenes` in the new API.
 
-The imperative pattern builds the viewer programmatically using method chaining. This is ideal for:
-- Dynamic configurations
-- Runtime-generated content
-- Complex conditional logic
+## API Reference
 
-**Example:** `examples/imperative/index.html`
+### MwxViewer Class
+
+The main API class for building custom applications:
+
+**Constructor:**
+```typescript
+new MwxViewer(container?: HTMLElement | string)
+```
+
+**Methods:**
+- `loadConfig(config: ViewerConfig | string): Promise<void>` - Load from config
+- `addProject(config: ProjectConfig): Project` - Add project (imperative)
+- `initialize(): Promise<void>` - Initialize MuJoCo runtime
+- `selectProject(projectId: string): Promise<void>` - Switch project
+- `selectScene(sceneId: string): Promise<void>` - Load scene
+- `selectPolicy(policyId: string): Promise<void>` - Load policy
+- `play(): void` - Start simulation
+- `pause(): void` - Pause simulation
+- `reset(): Promise<void>` - Reset simulation
+- `updateParams(params: Partial<RuntimeParams>): void` - Update parameters
+- `getProjects(): ProjectConfig[]` - Get all projects
+- `getScenes(): SceneConfig[]` - Get scenes for current project
+- `getPolicies(): PolicyConfig[]` - Get policies for current scene
+- `on(event: string, callback: Function): void` - Add event listener
+- `off(event: string, callback: Function): void` - Remove event listener
+
+**Events:**
+- `project-changed` - Fired when project changes
+- `scene-changed` - Fired when scene loads
+- `policy-changed` - Fired when policy loads
+- `params-changed` - Fired when parameters update
+- `error` - Fired on errors
+
+### Builder Classes
+
+**Project Builder:**
+```typescript
+const project = viewer.addProject(config);
+project.addScene(sceneConfig);
+project.setMetadata({ name, link });
+project.setDefaultScene(sceneId);
+```
+
+**Scene Builder:**
+```typescript
+const scene = project.addScene(config);
+scene.addPolicy(policyConfig);
+scene.setMetadata(metadata);
+scene.setCamera(cameraConfig);
+scene.setBackgroundColor(color);
+scene.setDefaultPolicy(policyId);
+```
+
+**Policy Builder:**
+```typescript
+const policy = scene.addPolicy(config);
+policy.setONNX(onnxConfig);
+policy.setObservationConfig(obsConfig);
+policy.setPDParams({ stiffness, damping });
+policy.setActionScale(scale);
+policy.setUIControls(['setpoint', 'stiffness']);
+```
+
+## TypeScript Support
+
+Full TypeScript type definitions included:
 
 ```typescript
-import { MwxViewer } from 'muwanx';
+import type {
+  ViewerConfig,
+  ProjectConfig,
+  SceneConfig,
+  PolicyConfig,
+  RuntimeParams,
+  AssetMetadata,
+  ObservationConfig,
+  CameraConfig,
+} from 'muwanx';
+```
 
-const viewer = new MwxViewer('#container');
+## Advanced Usage
 
-const project = viewer.addProject({
-  project_name: "My Project"
-});
+### Custom Observation Components
 
-const scene = project.addScene({
-  id: "scene1",
-  name: "My Scene",
-  model_xml: "./assets/scene.xml"
-});
-
+```typescript
 const policy = scene.addPolicy({
-  id: "policy1",
-  name: "My Policy",
-  path: "./assets/policy.json"
+  id: 'custom-policy',
+  name: 'Custom Policy',
+  obs_config: {
+    policy: [
+      { name: 'ProjectedGravity', history_steps: 3 },
+      { name: 'JointPositions', joint_names: 'isaac', history_steps: 3 },
+      { name: 'JointVelocities', joint_names: 'isaac', history_steps: 1 },
+    ]
+  }
+});
+```
+
+### Direct Runtime Access
+
+For low-level control:
+
+```typescript
+const runtime = viewer.getRuntime();
+// Access MuJoCo model and data
+const mjModel = runtime.mjModel;
+const mjData = runtime.mjData;
+```
+
+### Event Handling
+
+```typescript
+viewer.on('scene-changed', ({ scene }) => {
+  console.log('Loaded:', scene.name);
 });
 
-await viewer.initialize();
-await viewer.selectScene('scene1');
-await viewer.selectPolicy('policy1');
+viewer.on('policy-changed', ({ policy }) => {
+  console.log('Policy:', policy.name);
+});
+
+viewer.on('params-changed', ({ params }) => {
+  console.log('Params:', params);
+});
+
+viewer.on('error', ({ error, context }) => {
+  console.error(`Error in ${context}:`, error);
+});
 ```
 
-## Running the Examples
-
-### Option 1: Development Server (Vite)
-
-From the root directory:
-
-```bash
-npm install
-npm run dev
-```
-
-Then navigate to:
-- Declarative example: http://localhost:3000/declarative/
-- Imperative example: http://localhost:3000/imperative/
-- Vue demo: http://localhost:3000/
-
-### Option 2: Build and Serve
-
-```bash
-# Build the demo
-npm run build:demo
-
-# Serve the built files
-npm run preview
-```
-
-### Option 3: Library Mode
+## Library Build
 
 To use Muwanx as a library in your own project:
 
@@ -136,141 +309,11 @@ npm run build:lib
 # - dist/index.d.ts (TypeScript declarations)
 ```
 
-## Available Assets
-
-The `assets/` directory contains pre-configured scenes and policies:
-
-### Scenes
-- **Unitree Go2**: Quadruped robot (`scene/unitree_go2/`)
-- **Unitree Go1**: Quadruped robot (`scene/unitree_go1/`)
-- **Unitree G1**: Humanoid robot (`scene/unitree_g1/`)
-
-### Policies
-- **Vanilla Locomotion**: Basic walking policy
-- **Rough Terrain**: Policy for uneven surfaces
-- **Stairs**: Policy for climbing stairs
-
-## API Reference
-
-### MwxViewer
-
-Main viewer class that manages projects, scenes, and policies.
-
-**Constructor:**
-```typescript
-new MwxViewer(container?: HTMLElement | string)
-```
-
-**Methods:**
-- `loadConfig(config: ViewerConfig | string): Promise<void>` - Load from config
-- `addProject(config: ProjectConfig): Project` - Add project programmatically
-- `initialize(): Promise<void>` - Initialize MuJoCo runtime
-- `selectProject(projectId: string): Promise<void>` - Switch project
-- `selectScene(sceneId: string): Promise<void>` - Load scene
-- `selectPolicy(policyId: string): Promise<void>` - Load policy
-- `play(): void` - Start simulation
-- `pause(): void` - Pause simulation
-- `reset(): Promise<void>` - Reset simulation
-- `updateParams(params: Partial<RuntimeParams>): void` - Update runtime parameters
-- `on(event: string, callback: Function): void` - Add event listener
-- `off(event: string, callback: Function): void` - Remove event listener
-
-**Events:**
-- `project-changed` - Fired when project changes
-- `scene-changed` - Fired when scene loads
-- `policy-changed` - Fired when policy loads
-- `params-changed` - Fired when parameters update
-- `error` - Fired on errors
-
-### Project Builder
-
-```typescript
-const project = viewer.addProject(config);
-project.addScene(sceneConfig);
-project.setMetadata({ name, link });
-project.setDefaultScene(sceneId);
-```
-
-### Scene Builder
-
-```typescript
-const scene = project.addScene(config);
-scene.addPolicy(policyConfig);
-scene.setMetadata(metadata);
-scene.setCamera(cameraConfig);
-scene.setBackgroundColor(color);
-scene.setDefaultPolicy(policyId);
-```
-
-### Policy Builder
-
-```typescript
-const policy = scene.addPolicy(config);
-policy.setONNX(onnxConfig);
-policy.setObservationConfig(obsConfig);
-policy.setPDParams({ stiffness, damping });
-policy.setActionScale(scale);
-policy.setUIControls(['setpoint', 'stiffness']);
-```
-
-## TypeScript Support
-
-The package includes full TypeScript type definitions:
-
-```typescript
-import type {
-  ViewerConfig,
-  ProjectConfig,
-  SceneConfig,
-  PolicyConfig,
-  RuntimeParams,
-} from 'muwanx';
-```
-
-## Advanced Usage
-
-### Custom Observation Components
-
-```typescript
-import { ObservationManager } from 'muwanx';
-
-// Define custom observation configuration
-const obsConfig = {
-  policy: [
-    { name: 'ProjectedGravity', history_steps: 3 },
-    { name: 'JointPositions', joint_names: 'isaac', history_steps: 3 },
-    { name: 'JointVelocities', joint_names: 'isaac', history_steps: 1 },
-  ]
-};
-```
-
-### Custom Action Managers
-
-```typescript
-import { IsaacActionManager } from 'muwanx';
-
-const actionManager = new IsaacActionManager();
-// Configure action manager...
-```
-
-### Direct Runtime Access
-
-For advanced use cases, access the underlying MujocoRuntime:
-
-```typescript
-const runtime = viewer.getRuntime();
-// Access MuJoCo model, data, and low-level APIs
-```
-
-## Contributing
-
-To add new examples:
-
-1. Create a new directory under `examples/`
-2. Add an `index.html` or entry point
-3. Document the example in this README
-4. Ensure it works with both `npm run dev` and `npm run build`
-
 ## License
 
-Apache-2.0
+See the main [LICENSE](../LICENSE) file for details.
+
+Third-party assets in the demo have their own licenses. See:
+- [MyoSuite License](https://github.com/MyoHub/myosuite/blob/main/LICENSE)
+- [MuJoCo Menagerie License](https://github.com/google-deepmind/mujoco_menagerie/blob/main/LICENSE)
+- [MuJoCo Playground License](https://github.com/google-deepmind/mujoco_playground/blob/main/LICENSE)
