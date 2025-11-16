@@ -64,8 +64,22 @@ export function useUrlSync(options: {
   // Handle project switching via hash navigation
   function goToRoute(r: { name: any; path: string }) {
     if (r.path) {
+      // Validate that the path is in the allowed list to prevent open redirect
+      const allowedPaths = routeItems.value.map(item => item.path);
+      if (!allowedPaths.includes(r.path)) {
+        console.warn('Invalid route path rejected:', r.path);
+        return;
+      }
+
       // Clear any existing query params when switching projects
       const newHash = r.path.replace('#', '');
+
+      // Additional validation: ensure the hash is a relative path
+      if (newHash.includes(':') || newHash.startsWith('//')) {
+        console.warn('Potentially unsafe route rejected:', newHash);
+        return;
+      }
+
       // Build clean URL with just the project hash (no query params)
       const cleanUrl = window.location.origin + window.location.pathname + '#' + newHash;
       window.location.href = cleanUrl;
