@@ -54,6 +54,7 @@ const {
   extra_error_message,
   use_setpoint,
   command_vel_x,
+  command_ang_vel_z,
   compliant_mode,
   facet_kp,
   initRuntime,
@@ -62,6 +63,7 @@ const {
   updateFacetKp,
   updateUseSetpoint,
   updateCommandVelX,
+  updateAngularVelocityZ,
   updateCompliantMode,
   triggerImpulse,
   toggleVRButton,
@@ -160,6 +162,14 @@ onMounted(async () => {
     onNavigatePolicy: (d) => navigatePolicy(d),
     getHelpVisible: () => showHelpDialog.value,
     setHelpVisible: (v) => { showHelpDialog.value = v },
+    onSetVelocityX: (v) => {
+      command_vel_x.value = v
+      updateCommandVelX()
+    },
+    onSetAngularVelocityZ: (v) => {
+      command_ang_vel_z.value = v
+      updateAngularVelocityZ()
+    },
   })
 })
 

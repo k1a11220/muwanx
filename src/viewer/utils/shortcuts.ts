@@ -20,6 +20,9 @@ interface ShortcutsOptions {
   onNavigatePolicy?: (direction: number) => void;
   getHelpVisible?: () => boolean;
   setHelpVisible?: (visible: boolean) => void;
+  onSetVelocityX?: (value: number) => void;
+  onSetVelocityY?: (value: number) => void;
+  onSetAngularVelocityZ?: (value: number) => void;
 }
 
 export function createShortcuts(options: ShortcutsOptions = {}) {
@@ -32,11 +35,17 @@ export function createShortcuts(options: ShortcutsOptions = {}) {
     onNavigatePolicy,
     getHelpVisible,
     setHelpVisible,
+    onSetVelocityX,
+    onSetVelocityY,
+    onSetAngularVelocityZ,
   } = options;
 
   if (!target || typeof target.addEventListener !== 'function') {
     return { detach() { } };
   }
+
+  // Track currently pressed keys for movement
+  const pressedKeys = new Set();
 
   const handleKeydown = (event) => {
     try {
@@ -86,18 +95,68 @@ export function createShortcuts(options: ShortcutsOptions = {}) {
         onNavigatePolicy && onNavigatePolicy(-1);
         return;
       }
+      if (key === 'ArrowUp') {
+        event.preventDefault();
+        pressedKeys.add('ArrowUp');
+        onSetVelocityX && onSetVelocityX(1.0);
+        return;
+      }
+      if (key === 'ArrowDown') {
+        event.preventDefault();
+        pressedKeys.add('ArrowDown');
+        onSetVelocityX && onSetVelocityX(-1.0);
+        return;
+      }
+      if (key === 'ArrowLeft') {
+        event.preventDefault();
+        pressedKeys.add('ArrowLeft');
+        onSetAngularVelocityZ && onSetAngularVelocityZ(1.0);
+        return;
+      }
+      if (key === 'ArrowRight') {
+        event.preventDefault();
+        pressedKeys.add('ArrowRight');
+        onSetAngularVelocityZ && onSetAngularVelocityZ(-1.0);
+        return;
+      }
     } catch (e) {
       // fail quietly; shortcuts are non-critical
       // console.warn('Shortcut handler error:', e);
     }
   };
 
+  const handleKeyup = (event) => {
+    try {
+      const key = event.key;
+
+      // Reset velocities when arrow keys are released
+      if (key === 'ArrowUp' || key === 'ArrowDown') {
+        pressedKeys.delete(key);
+        if (!pressedKeys.has('ArrowUp') && !pressedKeys.has('ArrowDown')) {
+          onSetVelocityX && onSetVelocityX(0.0);
+        }
+        return;
+      }
+      if (key === 'ArrowLeft' || key === 'ArrowRight') {
+        pressedKeys.delete(key);
+        if (!pressedKeys.has('ArrowLeft') && !pressedKeys.has('ArrowRight')) {
+          onSetAngularVelocityZ && onSetAngularVelocityZ(0.0);
+        }
+        return;
+      }
+    } catch (e) {
+      // fail quietly
+    }
+  };
+
   target.addEventListener('keydown', handleKeydown);
+  target.addEventListener('keyup', handleKeyup);
 
   return {
     detach() {
       try {
         target.removeEventListener('keydown', handleKeydown);
+        target.removeEventListener('keyup', handleKeyup);
       } catch (_) { }
     },
     toggleHelp() {

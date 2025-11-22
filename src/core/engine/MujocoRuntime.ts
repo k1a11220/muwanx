@@ -94,6 +94,8 @@ export class MujocoRuntime {
       paused: true,
       help: false,
       command_vel_x: 0.0,
+      command_vel_y: 0.0,
+      command_ang_vel_z: 0.0,
       impedance_kp: 24.0,
       use_setpoint: true,
       impulse_remain_time: 0.0,

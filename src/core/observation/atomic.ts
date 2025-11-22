@@ -377,8 +377,8 @@ export class SimpleVelocityCommand {
   compute() {
     const command = new Float32Array([
       (this.runtime.params.command_vel_x || 0.0) * this.scale[0],
-      0.0 * this.scale[1],  // vel_y
-      0.0 * this.scale[2],  // ang_vel_yaw
+      (this.runtime.params.command_vel_y || 0.0) * this.scale[1],
+      (this.runtime.params.command_ang_vel_z || 0.0) * this.scale[2],
     ]);
 
     // If history_steps > 1, replicate the command across all timesteps

@@ -29,6 +29,14 @@ export class GoCommandManager extends BaseManager {
     this.runtime.params.command_vel_x = value;
   }
 
+  setCommandVelocityY(value) {
+    this.runtime.params.command_vel_y = value;
+  }
+
+  setAngularVelocityZ(value) {
+    this.runtime.params.command_ang_vel_z = value;
+  }
+
   setImpedanceKp(value) {
     const minKp = this.options.minImpedance ?? 12;
     const maxKp = this.options.maxImpedance ?? 24;

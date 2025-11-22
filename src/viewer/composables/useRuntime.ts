@@ -17,6 +17,7 @@ export interface UseRuntimeReturn {
   envManager: Ref<any>;
   facet_kp: Ref<number>;
   command_vel_x: Ref<number>;
+  command_ang_vel_z: Ref<number>;
   use_setpoint: Ref<boolean>;
   compliant_mode: Ref<boolean>;
   state: Ref<number>;
@@ -29,6 +30,7 @@ export interface UseRuntimeReturn {
   updateFacetKp: () => void;
   updateUseSetpoint: () => void;
   updateCommandVelX: () => void;
+  updateAngularVelocityZ: () => void;
   updateCompliantMode: () => void;
   triggerImpulse: () => void;
   toggleVRButton: () => void;
@@ -44,6 +46,7 @@ export function useRuntime(): UseRuntimeReturn {
 
   const facet_kp = ref<number>(24);
   const command_vel_x = ref<number>(0.0);
+  const command_ang_vel_z = ref<number>(0.0);
   const use_setpoint = ref<boolean>(true);
   const compliant_mode = ref<boolean>(false);
 
@@ -245,6 +248,11 @@ export function useRuntime(): UseRuntimeReturn {
     commandManager.value.setCommandVelocityX(command_vel_x.value);
   }
 
+  function updateAngularVelocityZ() {
+    if (!commandManager.value) return;
+    commandManager.value.setAngularVelocityZ(command_ang_vel_z.value);
+  }
+
   function updateCompliantMode() {
     if (!commandManager.value) return;
     commandManager.value.setCompliantMode(compliant_mode.value);
@@ -282,6 +290,7 @@ export function useRuntime(): UseRuntimeReturn {
     // params/state
     facet_kp,
     command_vel_x,
+    command_ang_vel_z,
     use_setpoint,
     compliant_mode,
     state,
@@ -296,6 +305,7 @@ export function useRuntime(): UseRuntimeReturn {
     updateFacetKp,
     updateUseSetpoint,
     updateCommandVelX,
+    updateAngularVelocityZ,
     updateCompliantMode,
     triggerImpulse,
     toggleVRButton,

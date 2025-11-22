@@ -46,6 +46,26 @@
             <div class="shortcut-description">Next / Previous policy</div>
           </div>
         </div>
+
+        <div class="help-title" style="margin-top: 20px;">Robot Control</div>
+        <div class="shortcut-section">
+          <div class="shortcut-item">
+            <div class="shortcut-key"><kbd class="clickable-key">↑</kbd></div>
+            <div class="shortcut-description">Move forward</div>
+          </div>
+          <div class="shortcut-item">
+            <div class="shortcut-key"><kbd class="clickable-key">↓</kbd></div>
+            <div class="shortcut-description">Move backward</div>
+          </div>
+          <div class="shortcut-item">
+            <div class="shortcut-key"><kbd class="clickable-key">←</kbd></div>
+            <div class="shortcut-description">Turn left</div>
+          </div>
+          <div class="shortcut-item">
+            <div class="shortcut-key"><kbd class="clickable-key">→</kbd></div>
+            <div class="shortcut-description">Turn right</div>
+          </div>
+        </div>
       </v-card-text>
     </v-card>
   </v-dialog>
