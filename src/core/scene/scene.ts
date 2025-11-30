@@ -3,6 +3,7 @@ import { mujocoAssetCollector } from '../utils/mujocoAssetCollector';
 import { createLights } from './lights';
 import { createTexture } from './textures';
 import { createTendonMeshes } from './tendons';
+import { generateBoxTerrain, TerrainPresets } from '@/utils/terrainGeneratorSimple';
 import type { MjModel, MjData } from 'mujoco-js';
 
 const SCENE_BASE_URL = './';
@@ -73,7 +74,32 @@ function resolveAssetPath(xmlDirectory: string, assetPath: string): string | nul
   return joined || normalized || null;
 }
 
-export async function loadSceneFromURL(mujoco: any, filename: string, parent: any): Promise<any[]> {
+function injectTerrain(xmlContent: string): string {
+  // Generate terrain XML
+  const terrainXML = generateBoxTerrain({
+    ...TerrainPresets.rolling,
+    sizeX: 15,
+    sizeY: 15,
+    resolution: 0.4
+  });
+
+  // Insert terrain after the comment marker
+  const marker = '<!-- Perlin noise terrain will be injected here -->';
+  if (xmlContent.includes(marker)) {
+    return xmlContent.replace(marker, marker + '\n' + terrainXML);
+  }
+
+  // Fallback: insert before first body element in worldbody
+  const worldbodyMatch = xmlContent.match(/(<worldbody[^>]*>)/);
+  if (worldbodyMatch) {
+    const insertPos = xmlContent.indexOf(worldbodyMatch[0]) + worldbodyMatch[0].length;
+    return xmlContent.slice(0, insertPos) + '\n' + terrainXML + xmlContent.slice(insertPos);
+  }
+
+  return xmlContent;
+}
+
+export async function loadSceneFromURL(mujoco: any, filename: string, parent: any, options: { enableTerrain?: boolean } = {}): Promise<any[]> {
   // Clean up existing resources
   if (parent.mjData != null) {
     try { parent.mjData.delete(); } catch (e) { /* ignore */ }
@@ -93,6 +119,14 @@ export async function loadSceneFromURL(mujoco: any, filename: string, parent: an
   const normalizedFilename = normalizePathSegments(cleanedFilename);
   const modelPath = `/working/${normalizedFilename}`;
   const modelDir = modelPath.substring(0, modelPath.lastIndexOf('/'));
+
+  // Optionally inject terrain
+  if (options.enableTerrain) {
+    const xmlContent = mujoco.FS.readFile(modelPath, { encoding: 'utf8' })
+    const modifiedXML = injectTerrain(xmlContent)
+    mujoco.FS.writeFile(modelPath, modifiedXML)
+  }
+
   try {
     const exists = mujoco.FS.analyzePath(modelPath).exists;
     if (!exists) {

@@ -23,6 +23,8 @@ interface ShortcutsOptions {
   onSetVelocityX?: (value: number) => void;
   onSetVelocityY?: (value: number) => void;
   onSetAngularVelocityZ?: (value: number) => void;
+  onCycleCameraMode?: () => void;
+  onToggleDepthMode?: () => void;
 }
 
 export function createShortcuts(options: ShortcutsOptions = {}) {
@@ -38,6 +40,8 @@ export function createShortcuts(options: ShortcutsOptions = {}) {
     onSetVelocityX,
     onSetVelocityY,
     onSetAngularVelocityZ,
+    onCycleCameraMode,
+    onToggleDepthMode,
   } = options;
 
   if (!target || typeof target.addEventListener !== 'function') {
@@ -117,6 +121,14 @@ export function createShortcuts(options: ShortcutsOptions = {}) {
         event.preventDefault();
         pressedKeys.add('ArrowRight');
         onSetAngularVelocityZ && onSetAngularVelocityZ(-1.0);
+        return;
+      }
+      if (key === 'z' || key === 'Z') {
+        onCycleCameraMode && onCycleCameraMode();
+        return;
+      }
+      if (key === 'x' || key === 'X') {
+        onToggleDepthMode && onToggleDepthMode();
         return;
       }
     } catch (e) {

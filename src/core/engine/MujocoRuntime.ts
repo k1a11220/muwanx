@@ -1,13 +1,25 @@
-import * as THREE from 'three';
-import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { downloadExampleScenesFolder, getPosition, getQuaternion, loadSceneFromURL } from '@/core/scene/scene';
-import { updateTendonGeometry, updateTendonRendering, createTendonState } from '@/core/scene/tendons';
-import { ONNXModule } from '@/core/agent/onnxHelper';
-import type { MjModel, MjData } from 'mujoco-js';
-import { updateHeadlightFromCamera, updateLightsFromData } from '@/core/scene/lights';
+import { ONNXModule } from "@/core/agent/onnxHelper";
+import {
+  updateHeadlightFromCamera,
+  updateLightsFromData,
+} from "@/core/scene/lights";
+import {
+  downloadExampleScenesFolder,
+  getPosition,
+  getQuaternion,
+  loadSceneFromURL,
+} from "@/core/scene/scene";
+import {
+  createTendonState,
+  updateTendonGeometry,
+  updateTendonRendering,
+} from "@/core/scene/tendons";
+import type { MjData, MjModel } from "mujoco-js";
+import * as THREE from "three";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { VRButton } from "three/examples/jsm/webxr/VRButton.js";
 
-const DEFAULT_CONTAINER_ID = 'mujoco-container';
+const DEFAULT_CONTAINER_ID = "mujoco-container";
 
 export interface MujocoRuntimeOptions {
   containerId?: string;
@@ -59,28 +71,38 @@ export class MujocoRuntime {
   mujocoRoot: any;
   loopPromise: Promise<void> | null;
   vrButton: HTMLElement | null;
+  cameraMode: "first-person" | "third-person" | "free";
+  savedCameraState: { position: THREE.Vector3; target: THREE.Vector3 } | null;
+  depthMode: boolean;
+  depthTarget: THREE.WebGLRenderTarget | null;
 
   constructor(mujoco, options: MujocoRuntimeOptions = {}) {
     this.mujoco = mujoco;
-    const workingPath = '/working';
+    const workingPath = "/working";
     try {
       mujoco.FS.mkdir(workingPath);
     } catch (error) {
-      if (error?.code !== 'EEXIST') {
-        console.warn('Failed to create /working directory:', error);
+      if (error?.code !== "EEXIST") {
+        console.warn("Failed to create /working directory:", error);
       }
     }
     try {
-      mujoco.FS.mount(mujoco.MEMFS, { root: '.' }, workingPath);
+      mujoco.FS.mount(mujoco.MEMFS, { root: "." }, workingPath);
     } catch (error) {
-      if (error?.code !== 'EEXIST' && error?.code !== 'EBUSY') {
-        console.warn('Failed to mount MEMFS at /working:', error);
+      if (error?.code !== "EEXIST" && error?.code !== "EBUSY") {
+        console.warn("Failed to mount MEMFS at /working:", error);
       }
     }
     this.options = options;
-    this.container = document.getElementById(options.containerId || DEFAULT_CONTAINER_ID);
+    this.container = document.getElementById(
+      options.containerId || DEFAULT_CONTAINER_ID
+    );
     if (!this.container) {
-      throw new Error(`Failed to find container element with id ${options.containerId || DEFAULT_CONTAINER_ID}`);
+      throw new Error(
+        `Failed to find container element with id ${
+          options.containerId || DEFAULT_CONTAINER_ID
+        }`
+      );
     }
 
     this.commandManager = options.commandManager || null;
@@ -103,14 +125,19 @@ export class MujocoRuntime {
     };
 
     this.scene = new THREE.Scene();
-    this.scene.name = 'scene';
+    this.scene.name = "scene";
 
-    this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.001, 1000);
-    this.camera.name = 'PerspectiveCamera';
+    this.camera = new THREE.PerspectiveCamera(
+      45,
+      window.innerWidth / window.innerHeight,
+      0.001,
+      1000
+    );
+    this.camera.name = "PerspectiveCamera";
     this.camera.position.set(2.0, 1.7, 1.7);
     this.scene.add(this.camera);
 
-    this.scene.background = new THREE.Color(0.15, 0.25, 0.35);
+    this.scene.background = new THREE.Color(1, 1, 1);
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.xr.enabled = true;
@@ -122,8 +149,8 @@ export class MujocoRuntime {
     this.container.appendChild(this.renderer.domElement);
     this.vrButton = VRButton.createButton(this.renderer);
     // Hide VRButton by default
-    this.vrButton.style.visibility = 'hidden';
-    this.vrButton.style.pointerEvents = 'none';
+    this.vrButton.style.visibility = "hidden";
+    this.vrButton.style.pointerEvents = "none";
     this.container.appendChild(this.vrButton);
 
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
@@ -131,17 +158,22 @@ export class MujocoRuntime {
     this.controls.panSpeed = 2;
     this.controls.zoomSpeed = 1;
     this.controls.enableDamping = true;
-    this.controls.dampingFactor = 0.10;
+    this.controls.dampingFactor = 0.1;
     this.controls.screenSpacePanning = true;
     this.controls.update();
 
-    window.addEventListener('resize', this.onWindowResize.bind(this));
+    window.addEventListener("resize", this.onWindowResize.bind(this));
     this.renderer.setAnimationLoop(this.render.bind(this));
 
     this.lastSimState = {
       bodies: new Map(),
-      tendons: createTendonState()
+      tendons: createTendonState(),
     };
+
+    this.cameraMode = "free";
+    this.savedCameraState = null;
+    this.depthMode = false;
+    this.depthTarget = null;
 
     this.mjModel = null;
     this.mjData = null;
@@ -153,7 +185,18 @@ export class MujocoRuntime {
     this.assetMetadata = null;
     this.loopPromise = null;
 
+    this.setupDepthRendering();
+
     this.attachManagers();
+  }
+
+  setupDepthRendering() {
+    this.depthTarget = new THREE.WebGLRenderTarget(
+      window.innerWidth,
+      window.innerHeight
+    );
+    this.depthTarget.texture.minFilter = THREE.NearestFilter;
+    this.depthTarget.texture.magFilter = THREE.NearestFilter;
   }
 
   attachManagers() {
@@ -183,15 +226,24 @@ export class MujocoRuntime {
     return this.services.get(name);
   }
 
-  async init(initialConfig: { scenePath?: string; metaPath?: string; policyPath?: string } = {}) {
-    if (this.commandManager && typeof this.commandManager.onInit === 'function') {
+  async init(
+    initialConfig: {
+      scenePath?: string;
+      metaPath?: string;
+      policyPath?: string;
+    } = {}
+  ) {
+    if (
+      this.commandManager &&
+      typeof this.commandManager.onInit === "function"
+    ) {
       await this.commandManager.onInit();
     }
-    if (this.actionManager && typeof this.actionManager.onInit === 'function') {
+    if (this.actionManager && typeof this.actionManager.onInit === "function") {
       await this.actionManager.onInit();
     }
     for (const manager of [...this.observationManagers, ...this.envManagers]) {
-      if (typeof manager.onInit === 'function') {
+      if (typeof manager.onInit === "function") {
         await manager.onInit();
       }
     }
@@ -201,7 +253,15 @@ export class MujocoRuntime {
     }
   }
 
-  async loadEnvironment({ scenePath, metaPath, policyPath }: { scenePath?: string; metaPath?: string; policyPath?: string }) {
+  async loadEnvironment({
+    scenePath,
+    metaPath,
+    policyPath,
+  }: {
+    scenePath?: string;
+    metaPath?: string;
+    policyPath?: string;
+  }) {
     await this.stop();
     await downloadExampleScenesFolder(this.mujoco, scenePath);
     await this.loadScene(scenePath, metaPath);
@@ -222,11 +282,14 @@ export class MujocoRuntime {
     this.inputDict = null;
     this.isInferencing = false;
 
-    if (this.actionManager && typeof this.actionManager.onPolicyCleared === 'function') {
+    if (
+      this.actionManager &&
+      typeof this.actionManager.onPolicyCleared === "function"
+    ) {
       await this.actionManager.onPolicyCleared();
     }
     for (const manager of this.observationManagers) {
-      if (typeof manager.onPolicyCleared === 'function') {
+      if (typeof manager.onPolicyCleared === "function") {
         await manager.onPolicyCleared();
       }
     }
@@ -237,7 +300,7 @@ export class MujocoRuntime {
       await this.loadingScene;
     }
     this.loadingScene = (async () => {
-      this.scene.remove(this.scene.getObjectByName('MuJoCo Root'));
+      this.scene.remove(this.scene.getObjectByName("MuJoCo Root"));
 
       [this.mjModel, this.mjData, this.bodies, this.lights] =
         await loadSceneFromURL(this.mujoco, mjcfPath, this);
@@ -248,7 +311,7 @@ export class MujocoRuntime {
       }
 
       let assetMeta = null;
-      if (metaPath && metaPath !== 'null') {
+      if (metaPath && metaPath !== "null") {
         const response = await fetch(metaPath);
         assetMeta = await response.json();
       }
@@ -257,7 +320,10 @@ export class MujocoRuntime {
       try {
         this.applyCameraFromMetadata(assetMeta);
       } catch (e) {
-        console.warn('[MujocoRuntime] Failed to apply camera from metadata:', e);
+        console.warn(
+          "[MujocoRuntime] Failed to apply camera from metadata:",
+          e
+        );
       }
 
       // safe guard
@@ -305,26 +371,29 @@ export class MujocoRuntime {
     // Always reset to defaults on scene/policy change
     this.resetDefaultCamera();
 
-    if (!assetMeta || typeof assetMeta !== 'object') {
+    if (!assetMeta || typeof assetMeta !== "object") {
       return; // no overrides provided
     }
 
-    const cameraMeta = assetMeta.camera && typeof assetMeta.camera === 'object'
-      ? assetMeta.camera
-      : {};
+    const cameraMeta =
+      assetMeta.camera && typeof assetMeta.camera === "object"
+        ? assetMeta.camera
+        : {};
 
-    const pickVec3 = (v) => (Array.isArray(v) && v.length >= 3 && v.every(n => typeof n === 'number'))
-      ? [v[0], v[1], v[2]]
-      : null;
+    const pickVec3 = (v) =>
+      Array.isArray(v) && v.length >= 3 && v.every((n) => typeof n === "number")
+        ? [v[0], v[1], v[2]]
+        : null;
 
     const pos = pickVec3(cameraMeta.pos ?? assetMeta.camera_pos);
     const target = pickVec3(cameraMeta.target ?? assetMeta.camera_target);
-    const fov = typeof (cameraMeta.fov ?? assetMeta.camera_fov) === 'number'
-      ? (cameraMeta.fov ?? assetMeta.camera_fov)
-      : null;
+    const fov =
+      typeof (cameraMeta.fov ?? assetMeta.camera_fov) === "number"
+        ? cameraMeta.fov ?? assetMeta.camera_fov
+        : null;
 
     // Apply FOV if provided
-    if (typeof fov === 'number' && isFinite(fov) && fov > 0) {
+    if (typeof fov === "number" && isFinite(fov) && fov > 0) {
       this.camera.fov = fov;
       this.camera.updateProjectionMatrix();
     }
@@ -355,7 +424,7 @@ export class MujocoRuntime {
 
   async loadPolicy(policyPath) {
     while (this.isInferencing) {
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
     }
 
     let config;
@@ -363,22 +432,28 @@ export class MujocoRuntime {
       const response = await fetch(policyPath);
       config = await response.json();
 
-      console.log('[MujocoRuntime] Loading policy from config:', config);
+      console.log("[MujocoRuntime] Loading policy from config:", config);
       this.policyConfig = config;
       this.policy = new ONNXModule(config.onnx);
-      console.log('[MujocoRuntime] ONNXModule created, calling init...');
+      console.log("[MujocoRuntime] ONNXModule created, calling init...");
       await this.policy.init();
-      console.log('[MujocoRuntime] Policy initialized successfully, session:', this.policy.session);
+      console.log(
+        "[MujocoRuntime] Policy initialized successfully, session:",
+        this.policy.session
+      );
     } catch (error) {
-      console.error('[MujocoRuntime] Failed to load policy:', error);
+      console.error("[MujocoRuntime] Failed to load policy:", error);
       throw error;
     }
 
-    if (this.actionManager && typeof this.actionManager.onPolicyLoaded === 'function') {
+    if (
+      this.actionManager &&
+      typeof this.actionManager.onPolicyLoaded === "function"
+    ) {
       await this.actionManager.onPolicyLoaded({ config });
     }
     for (const manager of this.observationManagers) {
-      if (typeof manager.onPolicyLoaded === 'function') {
+      if (typeof manager.onPolicyLoaded === "function") {
         await manager.onPolicyLoaded({
           config,
           mjModel: this.mjModel,
@@ -388,7 +463,7 @@ export class MujocoRuntime {
       }
     }
     for (const manager of this.envManagers) {
-      if (typeof manager.onPolicyLoaded === 'function') {
+      if (typeof manager.onPolicyLoaded === "function") {
         await manager.onPolicyLoaded({
           config,
           mjModel: this.mjModel,
@@ -429,7 +504,8 @@ export class MujocoRuntime {
   }
 
   async mainLoop() {
-    this.inputDict = this.inputDict || (this.policy ? this.policy.initInput() : {});
+    this.inputDict =
+      this.inputDict || (this.policy ? this.policy.initInput() : {});
     while (this.running) {
       const loopStart = performance.now();
       const ready = !this.params.paused && this.mjModel && this.mjData;
@@ -446,7 +522,7 @@ export class MujocoRuntime {
           try {
             await this.runInference();
           } catch (e) {
-            console.error('Inference error in main loop:', e);
+            console.error("Inference error in main loop:", e);
             this.running = false;
             break;
           }
@@ -474,7 +550,7 @@ export class MujocoRuntime {
       const loopEnd = performance.now();
       const elapsed = (loopEnd - loopStart) / 1000;
       const sleepTime = Math.max(0, this.timestep * this.decimation - elapsed);
-      await new Promise(resolve => setTimeout(resolve, sleepTime * 1000));
+      await new Promise((resolve) => setTimeout(resolve, sleepTime * 1000));
     }
     this.loopPromise = null;
   }
@@ -484,7 +560,7 @@ export class MujocoRuntime {
       return;
     }
     const ctrl = this.mjData.ctrl;
-    if (!action || typeof action.length !== 'number') {
+    if (!action || typeof action.length !== "number") {
       ctrl.fill(0);
       return;
     }
@@ -505,11 +581,14 @@ export class MujocoRuntime {
         timestep: this.timestep,
         substep,
       };
-      if (this.actionManager && typeof this.actionManager.beforeSimulationStep === 'function') {
+      if (
+        this.actionManager &&
+        typeof this.actionManager.beforeSimulationStep === "function"
+      ) {
         this.actionManager.beforeSimulationStep(stepContext);
       }
       for (const manager of this.envManagers) {
-        if (typeof manager.beforeSimulationStep === 'function') {
+        if (typeof manager.beforeSimulationStep === "function") {
           manager.beforeSimulationStep(stepContext);
         }
       }
@@ -518,11 +597,14 @@ export class MujocoRuntime {
       this.mujoco_time += this.timestep * 1000.0;
       this.simStepCount += 1;
 
-      if (this.actionManager && typeof this.actionManager.afterSimulationStep === 'function') {
+      if (
+        this.actionManager &&
+        typeof this.actionManager.afterSimulationStep === "function"
+      ) {
         this.actionManager.afterSimulationStep(stepContext);
       }
       for (const manager of this.envManagers) {
-        if (typeof manager.afterSimulationStep === 'function') {
+        if (typeof manager.afterSimulationStep === "function") {
           manager.afterSimulationStep(stepContext);
         }
       }
@@ -535,7 +617,7 @@ export class MujocoRuntime {
     }
     const tensors = {};
     for (const manager of this.observationManagers) {
-      if (typeof manager.collect === 'function') {
+      if (typeof manager.collect === "function") {
         const result = manager.collect({
           mjModel: this.mjModel,
           mjData: this.mjData,
@@ -556,15 +638,18 @@ export class MujocoRuntime {
     this.inferenceStepCount += 1;
     try {
       if (!this.policy.inKeys) {
-        console.error('[MujocoRuntime] Policy inKeys is undefined!', {
+        console.error("[MujocoRuntime] Policy inKeys is undefined!", {
           policy: this.policy,
           inKeys: this.policy.inKeys,
           session: this.policy.session,
-          metaData: this.policy.metaData
+          metaData: this.policy.metaData,
         });
       }
       const [result, carry] = await this.policy.runInference(this.inputDict);
-      if (this.actionManager && typeof this.actionManager.onPolicyOutput === 'function') {
+      if (
+        this.actionManager &&
+        typeof this.actionManager.onPolicyOutput === "function"
+      ) {
         this.actionManager.onPolicyOutput(result);
       }
       this.inputDict = carry;
@@ -582,11 +667,19 @@ export class MujocoRuntime {
         if (!this.lastSimState.bodies.has(b)) {
           this.lastSimState.bodies.set(b, {
             position: new THREE.Vector3(),
-            quaternion: new THREE.Quaternion()
+            quaternion: new THREE.Quaternion(),
           });
         }
-        getPosition(this.mjData.xpos, b, this.lastSimState.bodies.get(b).position);
-        getQuaternion(this.mjData.xquat, b, this.lastSimState.bodies.get(b).quaternion);
+        getPosition(
+          this.mjData.xpos,
+          b,
+          this.lastSimState.bodies.get(b).position
+        );
+        getQuaternion(
+          this.mjData.xquat,
+          b,
+          this.lastSimState.bodies.get(b).quaternion
+        );
       }
     }
 
@@ -596,7 +689,7 @@ export class MujocoRuntime {
         this.mjData,
         {
           cylinders: this.mujocoRoot.cylinders,
-          spheres: this.mujocoRoot.spheres
+          spheres: this.mujocoRoot.spheres,
         },
         this.lastSimState.tendons
       );
@@ -608,6 +701,7 @@ export class MujocoRuntime {
       return;
     }
 
+    this.updateCameraForMode();
     this.controls.update();
 
     updateHeadlightFromCamera(this.camera, this.lights);
@@ -626,19 +720,64 @@ export class MujocoRuntime {
       updateTendonRendering(
         {
           cylinders: this.mujocoRoot.cylinders,
-          spheres: this.mujocoRoot.spheres
+          spheres: this.mujocoRoot.spheres,
         },
         this.lastSimState.tendons
       );
     }
 
+    if (this.depthMode && this.depthTarget && this.depthMaterial) {
+      this.renderDepthView();
+    } else {
+      this.renderer.render(this.scene, this.camera);
+    }
+  }
+
+  renderDepthView() {
+    const originalMaterials = new Map();
+
+    this.scene.traverse((obj) => {
+      if (obj.isMesh && obj.material) {
+        originalMaterials.set(obj, obj.material);
+        obj.material = new THREE.MeshDepthMaterial();
+      }
+    });
+
+    this.renderer.setRenderTarget(this.depthTarget);
     this.renderer.render(this.scene, this.camera);
+    this.renderer.setRenderTarget(null);
+
+    originalMaterials.forEach((material, obj) => {
+      obj.material.dispose();
+      obj.material = material;
+    });
+
+    const fullscreenQuad = new THREE.Mesh(
+      new THREE.PlaneGeometry(2, 2),
+      new THREE.MeshBasicMaterial({ map: this.depthTarget.texture })
+    );
+    const quadScene = new THREE.Scene();
+    quadScene.add(fullscreenQuad);
+    const quadCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+
+    this.renderer.render(quadScene, quadCamera);
+
+    fullscreenQuad.geometry.dispose();
+    fullscreenQuad.material.dispose();
+  }
+
+  toggleDepthMode() {
+    this.depthMode = !this.depthMode;
   }
 
   onWindowResize() {
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(window.innerWidth, window.innerHeight);
+
+    if (this.depthTarget) {
+      this.depthTarget.setSize(window.innerWidth, window.innerHeight);
+    }
   }
 
   pause() {
@@ -651,9 +790,79 @@ export class MujocoRuntime {
 
   toggleVRButton() {
     if (this.vrButton) {
-      const isHidden = this.vrButton.style.visibility === 'hidden';
-      this.vrButton.style.visibility = isHidden ? 'visible' : 'hidden';
-      this.vrButton.style.pointerEvents = isHidden ? 'auto' : 'none';
+      const isHidden = this.vrButton.style.visibility === "hidden";
+      this.vrButton.style.visibility = isHidden ? "visible" : "hidden";
+      this.vrButton.style.pointerEvents = isHidden ? "auto" : "none";
+    }
+  }
+
+  cycleCameraMode() {
+    const modes: Array<"first-person" | "third-person" | "free"> = [
+      "first-person",
+      "third-person",
+      "free",
+    ];
+    const currentIndex = modes.indexOf(this.cameraMode);
+    const nextIndex = (currentIndex + 1) % modes.length;
+    this.cameraMode = modes[nextIndex];
+
+    if (this.cameraMode === "free") {
+      this.controls.enabled = true;
+      if (this.savedCameraState) {
+        this.camera.position.copy(this.savedCameraState.position);
+        this.controls.target.copy(this.savedCameraState.target);
+        this.controls.update();
+      }
+    } else {
+      if (this.controls.enabled) {
+        this.savedCameraState = {
+          position: this.camera.position.clone(),
+          target: this.controls.target.clone(),
+        };
+      }
+      this.controls.enabled = false;
+    }
+  }
+
+  updateCameraForMode() {
+    if (!this.mjModel || !this.mjData || this.cameraMode === "free") {
+      return;
+    }
+
+    const trunkBodyId = this.mujoco.mj_name2id(
+      this.mjModel,
+      this.mujoco.mjtObj.mjOBJ_BODY.value,
+      "trunk"
+    );
+    if (trunkBodyId < 0) {
+      return;
+    }
+
+    const position = new THREE.Vector3();
+    const quaternion = new THREE.Quaternion();
+    getPosition(this.mjData.xpos, trunkBodyId, position);
+    getQuaternion(this.mjData.xquat, trunkBodyId, quaternion);
+
+    if (this.cameraMode === "first-person") {
+      const forwardOffset = new THREE.Vector3(0.5, 0, 0);
+      forwardOffset.applyQuaternion(quaternion);
+      this.camera.position.copy(position).add(forwardOffset);
+
+      const lookAtOffset = new THREE.Vector3(1, 0, 0);
+      lookAtOffset.applyQuaternion(quaternion);
+      const lookAtTarget = position.clone().add(lookAtOffset);
+      this.camera.lookAt(lookAtTarget);
+      this.controls.target.copy(lookAtTarget);
+    } else if (this.cameraMode === "third-person") {
+      const backOffset = new THREE.Vector3(-2, 1, 0);
+      backOffset.applyQuaternion(quaternion);
+      this.camera.position.copy(position).add(backOffset);
+
+      const lookAtOffset = new THREE.Vector3(1, 0, 0);
+      lookAtOffset.applyQuaternion(quaternion);
+      const lookAtTarget = position.clone().add(lookAtOffset);
+      this.camera.lookAt(lookAtTarget);
+      this.controls.target.copy(lookAtTarget);
     }
   }
 
@@ -665,11 +874,14 @@ export class MujocoRuntime {
     this.mujoco.mj_resetData(this.mjModel, this.mjData);
     this.mujoco.mj_forward(this.mjModel, this.mjData);
     this.params.paused = false;
-    if (this.commandManager && typeof this.commandManager.reset === 'function') {
+    if (
+      this.commandManager &&
+      typeof this.commandManager.reset === "function"
+    ) {
       this.commandManager.reset();
     }
     for (const manager of this.envManagers) {
-      if (typeof manager.reset === 'function') {
+      if (typeof manager.reset === "function") {
         manager.reset();
       }
     }
@@ -684,7 +896,7 @@ export class MujocoRuntime {
       try {
         this.policy.session.release();
       } catch (e) {
-        console.warn('Failed to release ONNX session:', e);
+        console.warn("Failed to release ONNX session:", e);
       }
     }
     this.policy = null;
@@ -695,7 +907,7 @@ export class MujocoRuntime {
       try {
         this.mjData.delete();
       } catch (e) {
-        console.warn('Failed to delete mjData:', e);
+        console.warn("Failed to delete mjData:", e);
       }
       this.mjData = null;
     }
@@ -703,7 +915,7 @@ export class MujocoRuntime {
       try {
         this.mjModel.delete();
       } catch (e) {
-        console.warn('Failed to delete mjModel:', e);
+        console.warn("Failed to delete mjModel:", e);
       }
       this.mjModel = null;
     }
@@ -712,7 +924,7 @@ export class MujocoRuntime {
     this.disposeThreeJSResources();
 
     // Remove event listeners and dispose renderer
-    window.removeEventListener('resize', this.onWindowResize);
+    window.removeEventListener("resize", this.onWindowResize);
     if (this.controls) {
       this.controls.dispose();
     }
@@ -720,14 +932,20 @@ export class MujocoRuntime {
     this.renderer.dispose();
 
     // Dispose managers
-    if (this.commandManager && typeof this.commandManager.dispose === 'function') {
+    if (
+      this.commandManager &&
+      typeof this.commandManager.dispose === "function"
+    ) {
       this.commandManager.dispose();
     }
-    if (this.actionManager && typeof this.actionManager.dispose === 'function') {
+    if (
+      this.actionManager &&
+      typeof this.actionManager.dispose === "function"
+    ) {
       this.actionManager.dispose();
     }
     for (const manager of [...this.observationManagers, ...this.envManagers]) {
-      if (typeof manager.dispose === 'function') {
+      if (typeof manager.dispose === "function") {
         manager.dispose();
       }
     }
@@ -744,12 +962,16 @@ export class MujocoRuntime {
     if (this.scene) {
       // Recursively dispose all objects in the scene
       this.scene.traverse((object) => {
-        if ('geometry' in object && object.geometry && typeof (object.geometry as any).dispose === 'function') {
+        if (
+          "geometry" in object &&
+          object.geometry &&
+          typeof (object.geometry as any).dispose === "function"
+        ) {
           (object.geometry as any).dispose();
         }
-        if ('material' in object && object.material) {
+        if ("material" in object && object.material) {
           if (Array.isArray(object.material)) {
-            object.material.forEach(material => {
+            object.material.forEach((material) => {
               this.disposeMaterial(material);
             });
           } else {
@@ -768,9 +990,9 @@ export class MujocoRuntime {
   disposeMaterial(material) {
     if (material) {
       // Dispose textures
-      Object.keys(material).forEach(prop => {
+      Object.keys(material).forEach((prop) => {
         const value = material[prop];
-        if (value && typeof value === 'object' && value.isTexture) {
+        if (value && typeof value === "object" && value.isTexture) {
           value.dispose();
         }
       });

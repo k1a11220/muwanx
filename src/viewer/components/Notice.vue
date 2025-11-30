@@ -1,11 +1,4 @@
-<template>
-  <div class="notice-container">
-    <div class="notice-content">
-      Powered by
-      <a href="https://github.com/ttktjmt/muwanx" target="_blank" class="notice-link">Muwanx</a>
-    </div>
-  </div>
-</template>
+<template></template>
 
 <script setup>
 // purely presentational
@@ -38,7 +31,7 @@
 }
 
 .notice-link {
-  color: #8DDFFB;
+  color: #8ddffb;
   text-decoration: none;
 }
 

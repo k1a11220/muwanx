@@ -46,6 +46,7 @@
     "@mdi/font": "7.4.47",
     "mujoco-js": "^0.0.7",
     "onnxruntime-web": "^1.21.1",
+    "simplex-noise": "^4.0.3",
     "three": "^0.181.1",
     "vue": "^3.5.13",
     "vue-router": "^4.5.1",

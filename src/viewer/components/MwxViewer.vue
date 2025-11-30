@@ -18,6 +18,17 @@
 
   <Notice />
 
+  <GameStatus
+    v-if="pizzaGame"
+    :game-state="pizzaGame.state"
+    :distance-to-goal="pizzaGame.distanceToGoal"
+    :pizza-status="pizzaGame.pizzaStatus"
+    :elapsed-time="pizzaGame.elapsedTime"
+    :stage-id="task"
+    @retry="handleGameRetry"
+    @nextLevel="handleGameNextLevel"
+  />
+
   <HelpDialog v-model="showHelpDialog" :is-mobile="isMobile" :show-button="!isMobile || isPanelCollapsed"
     @toggleHelp="() => (showHelpDialog = !showHelpDialog)" @toggleUI="toggleUIVisibility"
     @toggleVRButton="toggleVRButton" @reset="reset" @navigateScene="navigateScene" @navigatePolicy="navigatePolicy" />
@@ -30,6 +41,7 @@ import StatusDialogs from './StatusDialogs.vue'
 import HelpDialog from './HelpDialog.vue'
 import Notice from './Notice.vue'
 import StatusOverlay from './StatusOverlay.vue'
+import GameStatus from './GameStatus.vue'
 import { useConfig } from '../composables/useConfig'
 import { useRuntime } from '../composables/useRuntime'
 import { useScenePolicy } from '../composables/useScenePolicy'
@@ -50,6 +62,7 @@ const withTransition = transitionApi.withTransition
 const { isMobile, isSmallScreen, isPanelCollapsed, togglePanel } = useResponsive()
 const rt = useRuntime()
 const {
+  runtime,
   state,
   extra_error_message,
   use_setpoint,
@@ -57,6 +70,7 @@ const {
   command_ang_vel_z,
   compliant_mode,
   facet_kp,
+  pizzaGame,
   initRuntime,
   onTaskChange,
   onPolicyChange,
@@ -67,6 +81,8 @@ const {
   updateCompliantMode,
   triggerImpulse,
   toggleVRButton,
+  cycleCameraMode,
+  toggleDepthMode,
   reset,
   dispose,
 } = rt
@@ -170,8 +186,19 @@ onMounted(async () => {
       command_ang_vel_z.value = v
       updateAngularVelocityZ()
     },
+    onCycleCameraMode: () => cycleCameraMode(),
+    onToggleDepthMode: () => toggleDepthMode(),
   })
 })
+
+function handleGameRetry() {
+  reset()
+}
+
+function handleGameNextLevel() {
+  const nextStageId = task.value === '4' ? '5' : '4'
+  onSelectTask(nextStageId)
+}
 
 onBeforeUnmount(() => {
   dispose()

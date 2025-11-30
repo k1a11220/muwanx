@@ -1,7 +1,6 @@
-<mujoco model="go1_description">
+<mujoco model="go1_pizza_stage2">
     <compiler angle="radian" meshdir="meshes" autolimits="true"/>
-    
-    <!-- <option gravity='0 0 -9.806' iterations='50' solver='Newton' timestep='0.002'/> -->
+
     <option timestep="0.005" solver="PGS" gravity="0 0 -9.81"/>
 
     <default>
@@ -9,7 +8,7 @@
         <motor ctrlrange="-33.5 33.5" ctrllimited="true"/>
         <joint damping="0.01" armature="0.01" frictionloss="0.2" />
     </default>
-=
+
     <asset>
         <mesh name="trunk" file="trunk.obj" />
         <mesh name="hip" file="hip.obj" />
@@ -17,9 +16,14 @@
         <mesh name="calf" file="calf.obj" />
         <mesh name="thigh" file="thigh.obj" />
 
-        <texture type="skybox" builtin="gradient" rgb1="0.9 0.9 0.9" rgb2="0.7 0.7 0.7" width="512" height="512"/>
-        <texture type="2d" name="groundplane" builtin="flat" rgb1="0.95 0.95 0.95" width="512" height="512"/>
-        <material name="groundplane" texture="groundplane" texuniform="true" reflectance="0.1"/>
+        <texture type="skybox" builtin="gradient" rgb1="1 1 1" rgb2="1 1 1" width="512" height="512"/>
+        <texture type="2d" name="groundplane" builtin="checker" rgb1="1 1 1" rgb2="0.96 0.96 0.96" width="512" height="512"/>
+        <texture type="2d" name="obstacle_checker" builtin="checker" rgb1="0.9 0.9 0.9" rgb2="0.8 0.8 0.8" width="512" height="512"/>
+        <texture type="2d" name="pizza_texture" file="pizza.png"/>
+        <material name="groundplane" texture="groundplane" texrepeat="30 30" reflectance="0.1"/>
+        <material name="grid_material" texture="obstacle_checker" texrepeat="3 3"/>
+        <material name="pizza_box" rgba="0.85 0.2 0.1 1"/>
+        <material name="pizza_top" texture="pizza_texture" texrepeat="1 1"/>
     </asset>
 
     <visual>
@@ -32,70 +36,51 @@
         <camera name="track" mode="trackcom" pos="0 -1.3 1.6" xyaxes="1 0 0 0 0.707 0.707"/>
         <geom name="floor" size="0 0 0.05" type="plane" material="groundplane"/>
 
-        <!-- VERTICAL CLIMB - More reasonable slope -->
+        <!-- Start Zone -->
+        <geom name="start_zone" type="cylinder" pos="0 0 0.01" size="0.5 0.01" rgba="0.2 0.8 0.3 0.3" contype="0" conaffinity="0"/>
 
-        <!-- Section 1: Gentle Start (0-2m) -->
-        <geom name="s1" type="box" pos="1.5 0 0.08" size="0.25 0.5 0.08" rgba="0.3 0.3 0.3 1"/>
-        <geom name="s2" type="box" pos="1.9 0 0.24" size="0.25 0.5 0.08" rgba="0.3 0.3 0.3 1"/>
-        <geom name="s3" type="box" pos="2.3 0 0.40" size="0.25 0.5 0.08" rgba="0.3 0.3 0.3 1"/>
-        <geom name="s4" type="box" pos="2.7 0 0.56" size="0.25 0.5 0.08" rgba="0.3 0.3 0.3 1"/>
-        <geom name="s5" type="box" pos="3.1 0 0.72" size="0.25 0.5 0.08" rgba="0.3 0.3 0.3 1"/>
-        <geom name="s6" type="box" pos="3.5 0 0.88" size="0.25 0.5 0.08" rgba="0.3 0.3 0.3 1"/>
-        <geom name="s7" type="box" pos="3.9 0 1.04" size="0.25 0.5 0.08" rgba="0.3 0.3 0.3 1"/>
-        <geom name="s8" type="box" pos="4.3 0 1.20" size="0.25 0.5 0.08" rgba="0.3 0.3 0.3 1"/>
-        <geom name="s9" type="box" pos="4.7 0 1.36" size="0.25 0.5 0.08" rgba="0.3 0.3 0.3 1"/>
-        <geom name="s10" type="box" pos="5.1 0 1.52" size="0.25 0.5 0.08" rgba="0.3 0.3 0.3 1"/>
-        <geom name="s11" type="box" pos="5.5 0 1.68" size="0.25 0.5 0.08" rgba="0.3 0.3 0.3 1"/>
-        <geom name="s12" type="box" pos="5.9 0 1.84" size="0.25 0.5 0.08" rgba="0.35 0.3 0.3 1"/>
-        <geom name="s13" type="box" pos="6.3 0 2.00" size="0.25 0.5 0.08" rgba="0.35 0.3 0.3 1"/>
+        <!-- STAGE 2: Easier Obstacle Course with Full Walls -->
 
-        <!-- Rest Platform 1 -->
-        <geom name="rest1" type="box" pos="7.0 0 2.00" size="0.5 0.6 0.08" rgba="0.4 0.5 0.3 1"/>
+        <!-- Full-length walls along the entire path (0-10m) -->
+        <geom name="wall_left_full" type="box" pos="5 0.6 0.2" size="5 0.05 0.2" material="grid_material"/>
+        <geom name="wall_right_full" type="box" pos="5 -0.6 0.2" size="5 0.05 0.2" material="grid_material"/>
 
-        <!-- Section 2: Getting Steeper (2-4m) -->
-        <geom name="s14" type="box" pos="7.7 0 2.20" size="0.25 0.45 0.10" rgba="0.35 0.3 0.3 1"/>
-        <geom name="s15" type="box" pos="8.1 0 2.40" size="0.25 0.45 0.10" rgba="0.35 0.3 0.3 1"/>
-        <geom name="s16" type="box" pos="8.5 0 2.60" size="0.25 0.45 0.10" rgba="0.35 0.3 0.3 1"/>
-        <geom name="s17" type="box" pos="8.9 0 2.80" size="0.25 0.45 0.10" rgba="0.35 0.3 0.3 1"/>
-        <geom name="s18" type="box" pos="9.3 0 3.00" size="0.25 0.45 0.10" rgba="0.35 0.3 0.3 1"/>
-        <geom name="s19" type="box" pos="9.7 0 3.20" size="0.25 0.45 0.10" rgba="0.35 0.3 0.3 1"/>
-        <geom name="s20" type="box" pos="10.1 0 3.40" size="0.25 0.45 0.10" rgba="0.35 0.3 0.3 1"/>
-        <geom name="s21" type="box" pos="10.5 0 3.60" size="0.25 0.45 0.10" rgba="0.35 0.3 0.3 1"/>
-        <geom name="s22" type="box" pos="10.9 0 3.80" size="0.25 0.45 0.10" rgba="0.4 0.3 0.3 1"/>
-        <geom name="s23" type="box" pos="11.3 0 4.00" size="0.25 0.45 0.10" rgba="0.4 0.3 0.3 1"/>
+        <!-- Section 2: Fewer and smaller obstacles (3-5m) -->
+        <geom name="obstacle_1" type="box" pos="3.8 0.2 0.05" size="0.12 0.12 0.05" material="grid_material"/>
+        <geom name="obstacle_2" type="box" pos="4.5 -0.25 0.05" size="0.12 0.12 0.05" material="grid_material"/>
 
-        <!-- Rest Platform 2 -->
-        <geom name="rest2" type="box" pos="12.0 0 4.00" size="0.5 0.6 0.08" rgba="0.4 0.5 0.3 1"/>
+        <!-- Section 3: Gentle uphill ramp (5-7m) -->
+        <geom name="ramp_1" type="box" pos="5.5 0 0.03" size="0.5 0.6 0.03" quat="0.9986 0.0523 0 0" material="grid_material"/>
+        <geom name="ramp_2" type="box" pos="6.0 0 0.09" size="0.5 0.6 0.03" quat="0.9986 0.0523 0 0" material="grid_material"/>
+        <geom name="ramp_3" type="box" pos="6.5 0 0.15" size="0.5 0.6 0.03" quat="0.9986 0.0523 0 0" material="grid_material"/>
 
-        <!-- Section 3: Challenging (4-6m) -->
-        <geom name="s24" type="box" pos="12.6 0 4.25" size="0.25 0.4 0.125" rgba="0.4 0.3 0.3 1"/>
-        <geom name="s25" type="box" pos="13.0 0 4.50" size="0.25 0.4 0.125" rgba="0.4 0.3 0.3 1"/>
-        <geom name="s26" type="box" pos="13.4 0 4.75" size="0.25 0.4 0.125" rgba="0.4 0.3 0.3 1"/>
-        <geom name="s27" type="box" pos="13.8 0 5.00" size="0.25 0.4 0.125" rgba="0.4 0.3 0.3 1"/>
-        <geom name="s28" type="box" pos="14.2 0 5.25" size="0.25 0.4 0.125" rgba="0.4 0.3 0.3 1"/>
-        <geom name="s29" type="box" pos="14.6 0 5.50" size="0.25 0.4 0.125" rgba="0.4 0.3 0.3 1"/>
-        <geom name="s30" type="box" pos="15.0 0 5.75" size="0.25 0.4 0.125" rgba="0.45 0.3 0.3 1"/>
-        <geom name="s31" type="box" pos="15.4 0 6.00" size="0.25 0.4 0.125" rgba="0.45 0.3 0.3 1"/>
+        <!-- Section 4: Lower platform (7-8m) -->
+        <geom name="platform" type="box" pos="7.5 0 0.18" size="1.0 0.7 0.03" material="grid_material"/>
 
-        <!-- Rest Platform 3 -->
-        <geom name="rest3" type="box" pos="16.0 0 6.00" size="0.5 0.6 0.08" rgba="0.4 0.5 0.3 1"/>
+        <!-- Section 5: Gentle downhill (8-10m) -->
+        <geom name="down_1" type="box" pos="8.5 0 0.15" size="0.5 0.6 0.03" quat="0.9986 -0.0523 0 0" material="grid_material"/>
+        <geom name="down_2" type="box" pos="9.0 0 0.09" size="0.5 0.6 0.03" quat="0.9986 -0.0523 0 0" material="grid_material"/>
+        <geom name="down_3" type="box" pos="9.5 0 0.03" size="0.5 0.6 0.03" quat="0.9986 -0.0523 0 0" material="grid_material"/>
 
-        <!-- Section 4: Final Push (6-8m) -->
-        <geom name="s32" type="box" pos="16.5 0 6.30" size="0.23 0.35 0.15" rgba="0.45 0.3 0.3 1"/>
-        <geom name="s33" type="box" pos="16.9 0 6.60" size="0.23 0.35 0.15" rgba="0.45 0.3 0.3 1"/>
-        <geom name="s34" type="box" pos="17.3 0 6.90" size="0.23 0.35 0.15" rgba="0.45 0.3 0.3 1"/>
-        <geom name="s35" type="box" pos="17.7 0 7.20" size="0.23 0.35 0.15" rgba="0.45 0.3 0.3 1"/>
-        <geom name="s36" type="box" pos="18.1 0 7.50" size="0.23 0.35 0.15" rgba="0.5 0.3 0.3 1"/>
-        <geom name="s37" type="box" pos="18.5 0 7.80" size="0.23 0.35 0.15" rgba="0.5 0.3 0.3 1"/>
+        <!-- Goal Zone -->
+        <geom name="goal_zone" type="cylinder" pos="10 0 0.01" size="0.6 0.01" rgba="0.2 0.4 1 0.3" contype="0" conaffinity="0"/>
 
-        <!-- THE SUMMIT -->
-        <geom name="summit" type="box" pos="19.2 0 7.80" size="0.8 0.8 0.1" rgba="0.8 0.6 0.2 1"/>
+        <!-- Goal Marker (cylinder beacon) -->
+        <geom name="goal_marker" type="cylinder" pos="10 0 0.5" size="0.5 0.5" rgba="0.2 0.4 1 0.3" contype="0" conaffinity="0"/>
+
+        <!-- PIZZA BOX -->
+        <body name="pizza_box" pos="0 0 0.44">
+            <inertial pos="0 0 0" mass="0.5" diaginertia="0.005 0.005 0.001" />
+            <joint type="free" />
+            <geom name="pizza_box_geom" type="box" size="0.15 0.15 0.025" material="pizza_box" friction="1.5 0.8 0.8" />
+            <geom name="pizza_label" type="box" size="0.12 0.12 0.026" pos="0 0 0.001" material="pizza_top" contype="0" conaffinity="0" />
+        </body>
 
         <body name="trunk" pos="0 0 0.35">
             <inertial pos="0.0116053 0.00442221 0.000106692" quat="0.0111438 0.707126 -0.00935374 0.706938" mass="4.801" diaginertia="0.0447997 0.0366257 0.0162187" />
             <joint type="free" />
             <geom type="mesh" contype="0" conaffinity="0" group="1" rgba="0.913725 0.913725 0.847059 1" mesh="trunk" />
-            <geom size="0.13 0.04675 0.057" type="box" rgba="0.913725 0.913725 0.847059 1" />
+            <geom size="0.13 0.04675 0.057" type="box" rgba="0.913725 0.913725 0.847059 1" friction="1.5 0.8 0.8" />
             <geom size="0.0005 0.0005 0.0005" pos="-0.01592 -0.06659 -0.00617" type="box" contype="0" conaffinity="0" group="1" rgba="0.8 0 0 0" />
             <geom size="0.0005 0.0005 0.0005" pos="-0.01592 -0.06659 -0.00617" type="box" rgba="0.8 0 0 0" />
             <site name="imu" pos="0 0 0"/>
@@ -138,7 +123,7 @@
                         <inertial pos="0.00455603 0.0009473 -0.147239" quat="0.762045 0.00970173 0.0180098 0.647201" mass="0.218015" diaginertia="0.00399678 0.00398122 3.99428e-05" />
                         <joint name="FL_calf_joint" pos="0 0 0" axis="0 1 0" limited="true" range="-2.69653 -0.916298" />
                         <geom type="mesh" contype="0" conaffinity="0" group="1" rgba="0 0 0 1" mesh="calf" />
-                        <geom size="0.1065 0.008 0.008" pos="0 0 -0.1065" quat="0.707107 0 0.707107 0" type="box" rgba="0.913725 0.913725 0.847059 0" />
+                        <geom size="0.1065 0.008 0.008" pos="0 0 -0.1065" quat="0.707107 0 0.707107 0" type="box" rgba="0 0 0 0" />
                         <geom size="0.01" pos="0 0 -0.213" contype="0" conaffinity="0" group="1" rgba="0 0 0 1" />
                         <geom size="0.02" pos="0 0 -0.213" rgba="0 0 0 1" />
                     </body>
@@ -151,7 +136,7 @@
                 <geom size="0.046 0.02" quat="0.707107 0.707107 0 0" type="cylinder" rgba="0.913725 0.913725 0.847059 1" />
                 <geom size="0.046 0.02" pos="0 -0.045 0" quat="0.707107 0.707107 0 0" type="cylinder" rgba="0.913725 0.913725 0.847059 0" />
                 <geom size="0.031 0.02" pos="0 -0.07 0" quat="0.707107 0.707107 0 0" type="cylinder" rgba="0.913725 0.913725 0.847059 0" />
-        
+
                 <body name="RR_thigh" pos="0 -0.08 0">
                     <inertial pos="-0.003468 0.018947 -0.032736" quat="0.999266 0.00067676 -0.0382978 0.000639813" mass="0.898919" diaginertia="0.00542178 0.00514246 0.000998869" />
                     <joint name="RR_thigh_joint" pos="0 0 0" axis="0 1 0" limited="true" range="-1.0472 4.18879" />
@@ -192,8 +177,8 @@
             </body>
         </body>
     </worldbody>
-    <actuator>       
-        
+    <actuator>
+
         <motor name="FR_hip"       gear="1" joint="FR_hip_joint"/>
         <motor name="FR_thigh"     gear="1" joint="FR_thigh_joint"/>
         <motor name="FR_calf"      gear="1" joint="FR_calf_joint"/>

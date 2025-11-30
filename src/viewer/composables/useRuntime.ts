@@ -6,6 +6,7 @@ import { IsaacActionManager as ActionManager } from '@/core/action/IsaacActionMa
 import { PassiveActionManager } from '@/core/action/PassiveActionManager';
 import { ConfigObservationManager as ObservationManager } from '@/core/observation/ObservationManager';
 import { LocomotionEnvManager as EnvManager } from '@/core/engine/managers/EnvManager';
+import { PizzaDeliveryEnvManager } from '@/core/engine/managers/PizzaDeliveryEnvManager';
 import type { PolicyConfigItem, TaskConfigItem } from '@/types/config';
 import { MUJOCO_CONTAINER_ID } from '@/viewer/utils/constants';
 
@@ -34,6 +35,8 @@ export interface UseRuntimeReturn {
   updateCompliantMode: () => void;
   triggerImpulse: () => void;
   toggleVRButton: () => void;
+  cycleCameraMode: () => void;
+  toggleDepthMode: () => void;
   dispose: () => void;
 }
 
@@ -52,6 +55,7 @@ export function useRuntime(): UseRuntimeReturn {
 
   const state = ref<number>(0);
   const extra_error_message = ref<string>('');
+  const pizzaGame = ref<any>(null);
 
   function resolveSceneConfig(task: TaskConfigItem | null, policy: PolicyConfigItem | null) {
     if (!task) return { scenePath: null as string | null, metaPath: null as string | null };
@@ -145,7 +149,15 @@ export function useRuntime(): UseRuntimeReturn {
       await ensureActionManager(metaPath, initialPolicy);
       commandManager.value = markRaw(new CommandManager());
       observationManager.value = markRaw(new ObservationManager());
-      envManager.value = markRaw(new EnvManager());
+
+      const isPizzaScene = initialTask?.id === '4' || initialTask?.id === '5';
+      const goalDistance = initialTask?.id === '5' ? 10 : 5;
+      envManager.value = markRaw(
+        isPizzaScene ? new PizzaDeliveryEnvManager({
+          goalPosition: new (await import('three')).Vector3(goalDistance, 0, 0),
+          pizzaGameRef: pizzaGame,
+        }) : new EnvManager()
+      );
 
       runtime.value = markRaw(new MujocoRuntime(mujoco, {
         containerId: MUJOCO_CONTAINER_ID,
@@ -186,6 +198,22 @@ export function useRuntime(): UseRuntimeReturn {
     if (!runtime.value) return;
     const { scenePath, metaPath } = resolveSceneConfig(taskItem, policyItem);
     await ensureActionManager(metaPath, policyItem);
+
+    const isPizzaScene = taskItem?.id === '4' || taskItem?.id === '5';
+    const goalDistance = taskItem?.id === '5' ? 10 : 5;
+
+    if (isPizzaScene) {
+      envManager.value = markRaw(new PizzaDeliveryEnvManager({
+        goalPosition: new (await import('three')).Vector3(goalDistance, 0, 0),
+        pizzaGameRef: pizzaGame,
+      }));
+
+      if (runtime.value.envManagers && runtime.value.envManagers.length > 0) {
+        runtime.value.envManagers[0] = envManager.value;
+        envManager.value.attachRuntime(runtime.value);
+      }
+    }
+
     await runtime.value.loadEnvironment({
       scenePath,
       metaPath,
@@ -270,6 +298,18 @@ export function useRuntime(): UseRuntimeReturn {
     }
   }
 
+  function cycleCameraMode() {
+    if (runtime.value) {
+      runtime.value.cycleCameraMode();
+    }
+  }
+
+  function toggleDepthMode() {
+    if (runtime.value) {
+      runtime.value.toggleDepthMode();
+    }
+  }
+
   function dispose() {
     try {
       runtime.value?.dispose();
@@ -295,6 +335,7 @@ export function useRuntime(): UseRuntimeReturn {
     compliant_mode,
     state,
     extra_error_message,
+    pizzaGame,
 
     // api
     initRuntime,
@@ -309,6 +350,8 @@ export function useRuntime(): UseRuntimeReturn {
     updateCompliantMode,
     triggerImpulse,
     toggleVRButton,
+    cycleCameraMode,
+    toggleDepthMode,
     dispose,
   };
 }
